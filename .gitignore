@@ -3,3 +3,6 @@ data/*
 *.out
 *.pt
 *~
+
+.data
+__pycache__
