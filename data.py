@@ -5,7 +5,7 @@ import io
 class StructuredLmDataset(data.Dataset):
     def __init__(
         self, path, text_field, newline_eos=True,
-        encoding='utf-8', **kwargs,
+        encoding='utf-8', **kwargs
     ):
         """Create a LanguageModelingDataset given a path and a field.
         Arguments:
