@@ -1,0 +1,104 @@
+\documentclass{article}
+
+\usepackage[margin=1in]{geometry}
+
+% ToC
+\usepackage{blindtext} 
+\usepackage[linktocpage]{hyperref}
+\usepackage{bookmark}
+\usepackage{titlesec}
+
+% bib
+\usepackage[round]{natbib}
+
+% Math Imports
+\usepackage{amsmath, amssymb, bm, fancyhdr, sectsty, dsfont, mathtools}
+
+% Tikz
+\usepackage{tikz}
+\usetikzlibrary{bayesnet}
+
+\usepackage{wrapfig}
+\usepackage{comment}
+\usepackage{subcaption}
+
+% Symbols
+\newcommand\ind{\protect\mathpalette{\protect\independenT}{\perp}}
+\def\independenT#1#2{\mathrel{\rlap{$#1#2$}\mkern2mu{#1#2}}}
+\newcommand\norm[1]{\left\lVert#1\right\rVert}
+\newcommand\set[1]{\left\{#1\right\}}
+
+\newcommand\RNN{\mathrm{RNN}}
+\newcommand\MLP{\mathrm{MLP}}
+\newcommand\enc{\mathrm{enc}}
+\newcommand\softmax{\mathrm{softmax}}
+
+% Distributions
+\newcommand{\Cat}{\mathrm{Cat}}
+\newcommand\Expo{\mathrm{Expo}}
+\newcommand\Bern{\mathrm{Bern}}
+\newcommand\Pois{\mathrm{Pois}}
+\newcommand\Bin{\mathrm{Bin}}
+\newcommand\Unif{\mathrm{Unif}}
+\newcommand\Betad{\mathrm{Beta}}
+\newcommand\Gammad{\mathrm{Gamma}}
+\newcommand\Geom{\mathrm{Geom}}
+\newcommand\Logd{\mathrm{Logistic}}
+
+\newcommand\E[1]{\mathbb{E}\left[#1\right]}
+\newcommand\Es[2]{\mathbb{E}_{#1}\left[#2\right]}
+\newcommand{\Var}{\mathrm{Var}}
+\newcommand{\Cov}{\mathrm{Cov}}
+\newcommand{\Cor}{\mathrm{Cor}}
+
+% Bold stuff
+\newcommand{\ba}{\mathbf{a}}
+\newcommand{\bb}{\mathbf{b}}
+\newcommand{\bc}{\mathbf{c}}
+\newcommand{\bd}{\mathbf{d}}
+\newcommand{\be}{\mathbf{e}}
+\newcommand{\bg}{\mathbf{g}}
+\newcommand{\bh}{\mathbf{h}}
+\newcommand{\bw}{\mathbf{w}}
+\newcommand{\bx}{\mathbf{x}}
+\newcommand{\by}{\mathbf{y}}
+\newcommand{\bz}{\mathbf{z}}
+
+% mathcal stuff
+\newcommand{\mcD}{\mathcal{D}}
+
+% math blackboard bold stuff
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\C}{\mathbb{C}}
+\newcommand{\Z}{\mathbb{Z}}
+\newcommand{\N}{\mathbb{N}}
+\newcommand{\Q}{\mathbb{Q}}
+
+
+\DeclareMathOperator*{\argmin}{argmin}
+\DeclareMathOperator*{\argmax}{argmax}
+
+\title{Inducing Latent Constituency Parses with Self-Attention}
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+\section{Problem}
+\cite{shen2018prpn}
+
+\section{Model}
+\subsection{Generative Model}
+\begin{itemize}
+\item $p(z)$
+\item $p(x|z)$
+\end{itemize}
+
+\section{Training and Inference}
+
+\bibliographystyle{plainnat}
+\bibliography{w}
+
+\end{document}
+
