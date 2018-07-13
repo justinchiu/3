@@ -4,6 +4,8 @@ from torchtext import data
 from torchtext import datasets
 from data import StructuredLmDataset
 
+import models
+
 def get_args():
     args = argparse.ArgumentParser()
     args.add_argument("-devid", type=int, default=-1)
@@ -30,4 +32,4 @@ TEXT.build_vocab(train)
 train_iter, valid_iter, test_iter = data.BPTTIterator.splits(
     (train, valid, test), batch_size=args.bsz, bptt_len=args.bptt, device=device)
 
-
+#model = LM()
