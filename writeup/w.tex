@@ -85,11 +85,34 @@
 
 \section{Introduction}
 
+
 \section{Problem}
-\cite{shen2018prpn}
+We would like to learn a generative model
+over source sentences $\bx = \{x_0, x_1, \ldots\}$,
+using a distribution over latent trees $\bz$.  
+\citep{shen2018prpn}
+\citet{yin18structvae}
+
+\section{PRPN}
+\citep{shen2018prpn}
+\begin{itemize}
+\item $d_t$ is a score which is used to rank a token's propensity to be the beginning of a constituent,
+or how high up in the tree it should be.
+These $d_t$ are used to gate self attention by preventing a token from attending past
+another token $i$ if $d_i > d_t$.
+\item 
+\end{itemize}
+
+Comment on \citet{shen2018prpn}'s figures, namely 1 through 3:
+a ternary tree is not exactly possible under their model (regardless of $\tau$).
+The way attention is parameterized,
+if $tau = 0$ then it would be better to view the tree as a fully left-branching binary tree.
 
 \section{Model}
 \subsection{Generative Model}
+Parameterize with $d_t\sim\mathcal{N}(\mu_t, \sigma_t)$.
+Reparameterize comparisons with gumbel softmax?
+Leave all self attentions as is?
 \begin{itemize}
 \item $p(z)$
 \item $p(x|z)$
