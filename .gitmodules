@@ -1,0 +1,3 @@
+[submodule "models/prpn"]
+	path = models/prpn
+	url = ssh://git@github.com/justinchiu/PRPN

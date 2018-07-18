@@ -1,1 +1,1 @@
-from .prpn.prpn import Prpn
+from .prpn.model_PRPN import Prpn
