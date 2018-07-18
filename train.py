@@ -33,3 +33,14 @@ train_iter, valid_iter, test_iter = data.BPTTIterator.splits(
     (train, valid, test), batch_size=args.bsz, bptt_len=args.bptt, device=device)
 
 #model = LM()
+model = Prpn(
+    vsize = len(TEXT.vocab),
+    lut_dim = args.lut_dim,
+    hid_dim = args.hid_dim,
+    n_layers = args.n_layers,
+    resolution = None,
+    res = None,
+    tie_weights = True,
+    clip = 5,
+    dropout = 0.4,
+)
