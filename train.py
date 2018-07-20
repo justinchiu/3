@@ -105,6 +105,7 @@ train_args = Args(
 )
 
 for e in range(args.epochs):
+    print("Epoch {}; lr: {}".format(e, optimizer.param_groups[0]["lr"]))
     train_loss, train_ntokens = model.train_epoch(train_iter, train_args)
     loss, ntokens = model.validate(valid_iter)
     print("Train loss: {}; ppl: {}"

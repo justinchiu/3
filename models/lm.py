@@ -34,11 +34,9 @@ class LM(nn.Module):
                         hidden_states[2].detach(),
                     )
                 logprobs = F.log_softmax(logits, dim=-1)
-                # Ignore padding tokens
-                logprobs.data[:,:,1].fill_(0)
                 logp = logprobs.view(T*N, -1).gather(-1, y.view(T*N, 1))
                 kl = 0
-                nll = -logp.sum()
+                nll = -logp[y.view(-1, 1) != 1].sum()
                 nelbo = nll + kl
                 if learn:
                     nelbo.div(nwords.item()).backward()
