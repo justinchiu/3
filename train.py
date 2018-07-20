@@ -62,24 +62,25 @@ TEXT.build_vocab(train)
 
 train_iter, valid_iter, test_iter = data.BPTTIterator.splits(
     (train, valid, test),
-    batch_size=args.bsz,
-    bptt_len=args.bptt,
-    device=device,
-    repeat=False,
+    batch_size = args.bsz,
+    bptt_len   = args.bptt,
+    device     = device,
+    repeat     = False,
+    shuffle    = True,
 )
 
 model = Prpn(
-    ntoken = len(TEXT.vocab),
-    ninp = args.lut_dim,
-    nhid = args.hid_dim,
-    nslots = args.n_slots,
-    nlayers = args.n_layers,
-    resolution = args.resolution,
-    res = args.res,
+    ntoken      = len(TEXT.vocab),
+    ninp        = args.lut_dim,
+    nhid        = args.hid_dim,
+    nslots      = args.n_slots,
+    nlayers     = args.n_layers,
+    resolution  = args.resolution,
+    res         = args.res,
     tie_weights = True,
-    dropout = args.dropout,
-    idropout = args.idropout,
-    rdropout = args.rdropout,
+    dropout     = args.dropout,
+    idropout    = args.idropout,
+    rdropout    = args.rdropout,
 )
 model.to(device)
 print(model)
