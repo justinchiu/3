@@ -78,7 +78,7 @@
 \DeclareMathOperator*{\argmin}{argmin}
 \DeclareMathOperator*{\argmax}{argmax}
 
-\title{Inducing Latent Constituency Parses with Self-Attention}
+\title{Latent Constituents via Self-Attention}
 
 \begin{document}
 \maketitle
@@ -96,7 +96,7 @@ using a distribution over latent trees $\bz$.
 \section{PRPN}
 \citep{shen2018prpn}
 \begin{itemize}
-\item $d_t$ is a score which is used to rank a token's propensity to be the beginning of a constituent,
+\item $d_t \in \R^+$ is a score which is used to rank a token's propensity to be the beginning of a constituent,
 or how high up in the tree it should be.
 These $d_t$ are used to gate self attention by preventing a token from attending past
 another token $i$ if $d_i > d_t$.
