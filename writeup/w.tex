@@ -116,39 +116,70 @@ Let $x_t$ be the current token, $\bx_{0:t-1}$ all previous tokens, $z_t$ the pre
 and $\tilde{\bz}_{0:t-1}\in\R^{t-1}_+$ be all previous scores.
 The model takes the form a language model, where
 the distribution over the next token
-$$p(x_t\mid \bx_{0:t-1}, \tilde{\bz}_{0:t-1},z_t) = f(h_t)$$
+$$p(x_t\mid \bx_{0:t-1}, \tilde{\bz}_{0:t-1},z_t) = f([h_{l_t:t-1},h_t])$$
 is parameterized by either a linear projection or additional residual blocks
-applied to the output of modified LSTMN (LSTM Memory-Network) $h_t$.
-$f$ is referred to as the Predict Network.
+applied to a concatenation of the output of modified LSTMN (LSTM Memory-Network) $h_t$
+and a convex combination of the previous LSTMN outputs (attention over $h_{l_t:t-1}$).
+$f$ is referred to as the Predict Network, and we will cover the attention mechanism shortly.
 The LSTMN, referred to as the Reading Network, is as follows:
 at each time step, the hidden and cell input are given by
 $$\{\tilde{h}_t,\tilde{c}_t\} = \sum_{i=1}^{t-1} s_i^t\{h_i,c_i\},$$
 a convex combination of the previous hidden and cell outputs.
 Then $$h_t,c_t = \texttt{LSTM}(\tilde{h}_t,\tilde{c}_t).$$
 The coefficients $s_i^t$ are computed by first predicting a key $$k = W_hh_{t-1}+W_xx_t$$
-and querying all previous hidden states in order to compute the intermediate attention
+then querying all previous hidden states in order to compute the intermediate attention
 $$\tilde{s}_i^t = \textrm{softmax}(\frac{h_ik_t^T}{\sqrt{\delta_k}}),$$
 where $\delta_k$ is the dimension of the hidden state.
-We then incorporate a form of multiplicative gating $g_i^t$ that is a function of the induced ranking of the tokens,
+This same attention mechanism is used in the Predict Network $f$.
+We then incorporate a form of multiplicative gating $g_i^t$
+that is a function of the induced ranking of the tokens,
 which we described in the previous section.
 Finally,
 $$s_i^t = \frac{g_i^t}{\sum_jg_j^t}\tilde{s_i^t},$$
 so at every timestep $t$ the self-attention is renormalized using the gates $g_{l_t:t-1}^t$.
 
 \subsection{Gating Self-attention}
-Recall that the gates $g_i^t$ are used to both induce a latent tree and modulate self-attention
-(due to the previously stated insight that modulating self-attention using a ranking induces a binary tree).
-At every timestep for token $x_t$, we define a latent variable $l_t$ which corresponds to the index of the 
+Recall that the gates $g_i^t$ used modulate self-attention also indirectly induce tree structure
+(due to the previously stated insight that modulating self-attention
+using a ranking induces a binary tree).
+At every timestep for token $x_t$,
+\citet{shen2018prpn} define a latent variable $l_t$ which corresponds to the index of the 
 token satisfying either condition (a) or (b).
 We then would have $$g_i^t = \left\{\begin{array}{lr}
 1, & l_t \le i < t\\
 0, & \textrm{otherwise.}
 \end{array}\right.$$
-However, there is 
+where we allow the model at timestep $t$ to only attend up to the token at $l_t$.
+We would then renormalize the attention accordingly.
+In order to calculate the gates $g_i^t$ we must model $p(l_t\mid\bx_{0:t})$ 
+(\citet{shen2018prpn} use the posterior distribution in their notation).
+They propose to model 
+$$p(l_t=i\mid\bx_{0:t-1})=(1-\alpha_i^t)\prod_{j=i+1}^{t-1}\alpha_j^t$$
+using a stick-breaking process.
+Rather than resorting to approximate inference, they instead use the expected value of $g_i^t$
+$$\E{g_i^t} = F_{l_t}(l_t \le i\mid\bx_{0:t-1}) = \prod_{j=i+1}^{t-1}\alpha_j^t.$$
+\citet{shen2018prpn} derive the expectation in the appendix of their paper.
+The $\alpha_j^t = \sigma(d_t - d_j)$, where $\sigma$ is the hard sigmoid function.
+The $d_j\in\R_+$ are given by a CNN over the token embeddings.
 
+The network used to compute the gates is called the Parsing Network.
 
-\section{Model}
+\section{Comparison to CCM \citep{klein-2002-ccm}}
+\citep{klein-2002-ccm2}
+\citep{golland-2012-ccm,huang-2012-ccm}
+
+\section{Alternative Latent Ranking Model}
 \subsection{Generative Model}
+PRPN \citep{shen2018prpn} choose to view $l_t$ as a latent variable.
+There are at least a few other choices:
+\begin{itemize}
+\item Model the scores $d_t \sim \mathcal{N}(\mu_t,\sigma_t)$
+or $d_t \sim \textrm{Gamma}$
+and use the Plackett-Luce ranking distribution.
+\item Model the comparisons $p(d_t < d_i)$ as order statistics of Gammas.
+\item Model the permutation matrix $Z \sim \mathcal{B}_n$.
+\item Model $l_t\sim \textrm{Cat}$.
+\end{itemize}
 Parameterize with $d_t\sim\mathcal{N}(\mu_t, \sigma_t)$.
 Reparameterize comparisons with gumbel softmax?
 Leave all self attentions as is?
