@@ -93,20 +93,59 @@ using a distribution over latent trees $\bz$.
 \citep{shen2018prpn}
 \citet{yin18structvae}
 
-\section{PRPN}
-\citep{shen2018prpn}
+\section{PRPN \citep{shen2018prpn}}
+The Parsing-Reading-Predict Network \citep{shen2018prpn} is an approach to unsupervised tree induction
+that uses a soft approximation to a latent variable to a degree of success.
+The paper is inspired by the following hypothesis:
+given a binary tree, a token $x_t$ only requires information up to a token $x_{l_t}$ that satisfies
+either of the following conditions:
 \begin{itemize}
-\item $d_t \in \R^+$ is a score which is used to rank a token's propensity to be the beginning of a constituent,
-or how high up in the tree it should be.
-These $d_t$ are used to gate self attention by preventing a token from attending past
-another token $i$ if $d_i > d_t$.
-\item 
+\item[(a)] its leftmost sibling
+\item[(b)] or, if the token $x_t$ is a leftmost child, its parent's left sibling's leftmost child.
 \end{itemize}
+Although the hypothesis itself is not tested and seems to only serve as inspiration,
+the model does see empirical success in the task of language modeling.
+The model is realized through the following insight: given a ranking of tokens $\bx = \{x_0,\ldots,x_T\}$,
+recursively splitting $\bx$ using the following procedure induces a binary tree where the first token to the left
+of token $x_t$ that has higher rank, denoted $x_{l_t}$, also satisfies condition (a) or (b):
+given token $i$ with the next highest rank, create a subtree $(x_{<i}, (x_i, x_{>i}))$ and
+recursively perform this procedure until only terminal nodes remain.
 
-Comment on \citet{shen2018prpn}'s figures, namely 1 through 3:
-a ternary tree is not exactly possible under their model (regardless of $\tau$).
-The way attention is parameterized,
-if $tau = 0$ then it would be better to view the tree as a fully left-branching binary tree.
+\subsection{The Model}
+Let $x_t$ be the current token, $\bx_{0:t-1}$ all previous tokens, $z_t$ the prediction for the current score,
+and $\tilde{\bz}_{0:t-1}\in\R^{t-1}_+$ be all previous scores.
+The model takes the form a language model, where
+the distribution over the next token
+$$p(x_t\mid \bx_{0:t-1}, \tilde{\bz}_{0:t-1},z_t) = f(h_t)$$
+is parameterized by either a linear projection or additional residual blocks
+applied to the output of modified LSTMN (LSTM Memory-Network) $h_t$.
+$f$ is referred to as the Predict Network.
+The LSTMN, referred to as the Reading Network, is as follows:
+at each time step, the hidden and cell input are given by
+$$\{\tilde{h}_t,\tilde{c}_t\} = \sum_{i=1}^{t-1} s_i^t\{h_i,c_i\},$$
+a convex combination of the previous hidden and cell outputs.
+Then $$h_t,c_t = \texttt{LSTM}(\tilde{h}_t,\tilde{c}_t).$$
+The coefficients $s_i^t$ are computed by first predicting a key $$k = W_hh_{t-1}+W_xx_t$$
+and querying all previous hidden states in order to compute the intermediate 
+$$\tilde{s}_i^t = \textrm{softmax}(\frac{h_ik_t^T}{\sqrt{\delta_k}}),$$
+where $\delta_k$ is the dimension of the hidden state.
+We then incorporate a form of multiplicative gating $g_i^t$ that is a function of the induced ranking of the tokens,
+which we described in the previous section.
+Finally,
+$$s_i^t = \frac{g_i^t}{\sum_jg_j^t}\tilde{s_i^t},$$
+so at every timestep $t$ the self-attention is renormalized using the gates $g_{l_t:t-1}^t$.
+
+\subsection{Gating Self-attention}
+Recall that the gates $g_i^t$ are used to both induce a latent tree and modulate self-attention
+(due to the previously stated insight that modulating self-attention using a ranking induces a binary tree).
+At every timestep for token $x_t$, we define a latent variable $l_t$ which corresponds to the index of the 
+token satisfying either condition (a) or (b).
+We then would have $$g_i^t = \left\{\begin{array}{lr}
+1, & l_t \le i < t\\
+0, & \textrm{otherwise}
+\end{array}\right.$$
+
+
 
 \section{Model}
 \subsection{Generative Model}
