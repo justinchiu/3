@@ -126,7 +126,7 @@ $$\{\tilde{h}_t,\tilde{c}_t\} = \sum_{i=1}^{t-1} s_i^t\{h_i,c_i\},$$
 a convex combination of the previous hidden and cell outputs.
 Then $$h_t,c_t = \texttt{LSTM}(\tilde{h}_t,\tilde{c}_t).$$
 The coefficients $s_i^t$ are computed by first predicting a key $$k = W_hh_{t-1}+W_xx_t$$
-and querying all previous hidden states in order to compute the intermediate 
+and querying all previous hidden states in order to compute the intermediate attention
 $$\tilde{s}_i^t = \textrm{softmax}(\frac{h_ik_t^T}{\sqrt{\delta_k}}),$$
 where $\delta_k$ is the dimension of the hidden state.
 We then incorporate a form of multiplicative gating $g_i^t$ that is a function of the induced ranking of the tokens,
@@ -142,9 +142,9 @@ At every timestep for token $x_t$, we define a latent variable $l_t$ which corre
 token satisfying either condition (a) or (b).
 We then would have $$g_i^t = \left\{\begin{array}{lr}
 1, & l_t \le i < t\\
-0, & \textrm{otherwise}
+0, & \textrm{otherwise.}
 \end{array}\right.$$
-
+However, there is 
 
 
 \section{Model}
