@@ -111,6 +111,8 @@ of token $x_t$ that has higher rank, denoted $x_{l_t}$, also satisfies condition
 given token $i$ with the next highest rank, create a subtree $(x_{<i}, (x_i, x_{>i}))$ and
 recursively perform this procedure until only terminal nodes remain.
 
+[Example on board]
+
 \subsection{The Model}
 Let $x_t$ be the current token, $\bx_{0:t-1}$ all previous tokens, $z_t$ the prediction for the current score,
 and $\tilde{\bz}_{0:t-1}\in\R^{t-1}_+$ be all previous scores.
@@ -163,6 +165,9 @@ The $\alpha_j^t = \sigma(d_t - d_j)$, where $\sigma$ is the hard sigmoid functio
 The $d_j\in\R_+$ are given by a CNN over the token embeddings.
 
 The network used to compute the gates is called the Parsing Network.
+When computing $p(x_t\mid\ldots)$, we cannot use the posterior score $d_t$,
+so an estimate is used based on the previous $k$ words, where $k$ is the 
+kernel width of the convolution.
 
 \section{Comparison to CCM \citep{klein-2002-ccm}}
 \citep{klein-2002-ccm2}
