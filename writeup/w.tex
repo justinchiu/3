@@ -90,6 +90,11 @@
 We would like to learn a generative model
 over source sentences $\bx = \{x_0, x_1, \ldots\}$,
 using a distribution over latent trees $\bz$.  
+We are primarily interested in the posterior distribution over trees given a sentence, $p(\bz\mid\bx)$.
+The performance of the generative model is secondary since we would like to analyze the
+output of the unsupervised model for any linguistic regularities, and use the model as a 
+testbed for linguistic hypotheses (of which I have none at the moment).
+
 \citep{shen2018prpn}
 \citet{yin18structvae}
 
@@ -97,13 +102,13 @@ using a distribution over latent trees $\bz$.
 The Parsing-Reading-Predict Network \citep{shen2018prpn} is an approach to unsupervised tree induction
 that uses a soft approximation to a latent variable to a degree of success.
 The paper is inspired by the following hypothesis:
-given a binary tree, a token $x_t$ only requires information up to a token $x_{l_t}$ that satisfies
+given a binary tree, a token at index $t$ only requires information up to index $l_t$ that satisfies
 either of the following conditions:
 \begin{itemize}
-\item[(a)] its leftmost sibling
-\item[(b)] or, if the token $x_t$ is a leftmost child, its parent's left sibling's leftmost child.
+\item[(a)] the token at $l_t$ is the leftmost sibling of the token at $t$
+\item[(b)] or, if the token at $t$ is a leftmost child, $l_t$ points to its parent's left sibling's leftmost child.
 \end{itemize}
-Although the hypothesis itself is not tested and seems to only serve as inspiration,
+Although the hypothesis itself is not tested in the implementation and serves only as inspiration,
 the model does see empirical success in the task of language modeling.
 The model is realized through the following insight: given a ranking of tokens $\bx = \{x_0,\ldots,x_T\}$,
 recursively splitting $\bx$ using the following procedure induces a binary tree where the first token to the left
@@ -121,26 +126,36 @@ the distribution over the next token
 $$p(x_t\mid \bx_{0:t-1}, \tilde{\bz}_{0:t-1},z_t) = f([h_{l_t:t-1},h_t])$$
 is parameterized by either a linear projection or additional residual blocks
 applied to a concatenation of the output of modified LSTMN (LSTM Memory-Network) $h_t$
-and a convex combination of the previous LSTMN outputs (attention over $h_{l_t:t-1}$).
-$f$ is referred to as the Predict Network, and we will cover the attention mechanism shortly.
+and a convex combination of the previous LSTMN outputs (i.e. attention over $h_{l_t:t-1}$).
+$f$ is referred to as the Predict Network.
+
+\subsubsection{LSTMN}
+\label{subsec:lstmn}
 The LSTMN, referred to as the Reading Network, is as follows:
 at each time step, the hidden and cell input are given by
 $$\{\tilde{h}_t,\tilde{c}_t\} = \sum_{i=1}^{t-1} s_i^t\{h_i,c_i\},$$
 a convex combination of the previous hidden and cell outputs.
 Then $$h_t,c_t = \texttt{LSTM}(\tilde{h}_t,\tilde{c}_t).$$
-The coefficients $s_i^t$ are computed by first predicting a key $$k = W_hh_{t-1}+W_xx_t$$
-then querying all previous hidden states in order to compute the intermediate attention
-$$\tilde{s}_i^t = \textrm{softmax}(\frac{h_ik_t^T}{\sqrt{\delta_k}}),$$
-where $\delta_k$ is the dimension of the hidden state.
-This same attention mechanism is used in the Predict Network $f$.
-We then incorporate a form of multiplicative gating $g_i^t$
-that is a function of the induced ranking of the tokens,
-which we described in the previous section.
-Finally,
-$$s_i^t = \frac{g_i^t}{\sum_jg_j^t}\tilde{s_i^t},$$
-so at every timestep $t$ the self-attention is renormalized using the gates $g_{l_t:t-1}^t$.
+The attention is computed in the same way as detailed in section~\ref{subsec:attn}.
+The input to the LSTMN module is either the previous token or the
+output of a previous LSTMN layer.
 
-\subsection{Gating Self-attention}
+\subsubsection{Attention}
+\label{subsec:attn}
+As all attention modules in the PRPN network use the same formulation of attention we will use 
+$y$ to refer to the input of the attention module, $\bm{g}$ the gate coefficients,
+$\bm{m}$ as the memories to attend over, and $\bm{s}$ as the attention coefficients.
+First the key is computed using a linear projection of the input $k = W_ky$.
+Then the intermediate scores are computed
+$$\tilde{s}_i = \textrm{softmax}\left(\frac{m_ik^T}{\sqrt{\delta_k}}\right),$$
+where $\delta_k$ is the dimension of the hidden state.
+Finally, the gate coefficients are normalized and used to prevent the attention from
+extending too far in the past.
+$$s_i = \frac{g_i}{\sum_jg_j}\tilde{s_i},$$
+where the gate coefficients $\bm{g}$ are detailed in section~\ref{subsec:gates}.
+
+\subsubsection{Gating Self-attention}
+\label{subsec:gates}
 Recall that the gates $g_i^t$ used modulate self-attention also indirectly induce tree structure
 (due to the previously stated insight that modulating self-attention
 using a ranking induces a binary tree).
@@ -160,14 +175,16 @@ $$p(l_t=i\mid\bx_{0:t-1})=(1-\alpha_i^t)\prod_{j=i+1}^{t-1}\alpha_j^t$$
 using a stick-breaking process.
 Rather than resorting to approximate inference, they instead use the expected value of $g_i^t$
 $$\E{g_i^t} = F_{l_t}(l_t \le i\mid\bx_{0:t-1}) = \prod_{j=i+1}^{t-1}\alpha_j^t.$$
-\citet{shen2018prpn} derive the expectation in the appendix of their paper.
 The $\alpha_j^t = \sigma(d_t - d_j)$, where $\sigma$ is the hard sigmoid function.
+This is not stated in the paper (there are a couple off-by-one) errors,
+but it must be that $g_{t-1}^t = 1$.
 The $d_j\in\R_+$ are given by a CNN over the token embeddings.
 
 The network used to compute the gates is called the Parsing Network.
 When computing $p(x_t\mid\ldots)$, we cannot use the posterior score $d_t$,
 so an estimate is used based on the previous $k$ words, where $k$ is the 
 kernel width of the convolution.
+However, afterwards \citet{shen2018prpn} use the posterior score for all $d_i$ when $i < t$.
 
 \section{Comparison to CCM \citep{klein-2002-ccm}}
 \citep{klein-2002-ccm2}
