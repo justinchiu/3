@@ -165,10 +165,20 @@ using a ranking induces a binary tree).
 At every timestep for token $x_t$,
 \citet{shen2018prpn} define a latent variable $l_t$ which corresponds to the index of the 
 token satisfying either condition (a) or (b).
+
 We then would have $$g^i_t(l_t) = \mathbf{1}(l_t \le i < t)$$
 where we allow the model at timestep $t$ to only attend up to the token at leftmost limit $l_t$.
 We would then renormalize the attention accordingly.
 In order to calculate the gates $g^i_t(l_t)$ we must model $p(l_t\mid\bx_{0:t})$ 
+
+We then would have $$g_i^t = \left\{\begin{array}{lr}
+1, & l_t \le i < t\\
+0, & \textrm{otherwise.}
+\end{array}\right.$$
+where we allow the model at timestep $t$ to only attend up to the token at $l_t$.
+We then renormalize the attention accordingly.
+In order to calculate the gates $g_i^t$ we must model $p(l_t\mid\bx_{0:t})$ 
+>>>>>>> f3dcfb2131bdd3df87784d07df2ecb17b3bf9eb9
 (\citet{shen2018prpn} use the posterior distribution in their notation).
 They propose to model 
 $$p(l_t=i\mid\bx_{0:t-1})=(1-\alpha_i^t)\prod_{j=i+1}^{t-1}\alpha_j^t$$
@@ -208,12 +218,17 @@ The network used to compute the gates is called the Parsing Network.
 When computing $p(x_t\mid\ldots)$, we cannot use the posterior score $d_t$,
 so an estimate is used based on the previous $k$ words, where $k$ is the 
 kernel width of the convolution.
-However, afterwards \citet{shen2018prpn} use the posterior score for all $d_i$ when $i < t$.
+However, afterwards \citet{shen2018prpn} use the posterior score $d_i \mid x_{i-K},\ldots, x_i$
+for all $d_i$ when $i < t$.
 
+\begin{comment}
 \section{Comparison to CCM \citep{klein-2002-ccm}}
 \citep{klein-2002-ccm2}
 \citep{golland-2012-ccm,huang-2012-ccm}
 \section{Comparison to StructVae \citep{yin18structvae}}
+Hm, if we generated context given span, would that encourage non-constituents?
+General question about segmental models.
+\end{comment}
 
 \section{Related Work}
 
