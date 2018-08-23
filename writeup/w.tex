@@ -118,9 +118,15 @@ recursively perform this procedure until only terminal nodes remain.
 
 [Example on board]
 
-\section{Alternative Explanation}
+\subsection{Ranking Models}
+\begin{enumerate}
+\item Plackett-Luce / Thurstone: Hidden score, select $i$th ranking item with logistic regression with remaining items.
+\item Pairwise Comparison Model (Bradley-Terry): hidden score, pairwise comparisons with log-odds.
+\end{enumerate}
+\citet{shen2018prpn} implicitly use the Bradley-Terry (pairwise) model of ranking for training and language modeling,
+but then switch to the Plackett-Luce model at test time for outputting parse trees.
 
-\subsection{The Model}
+\subsection{Their Model}
 Let $x_t$ be the current token, $\bx_{0:t-1}$ all previous tokens, $z_t$ the prediction for the current score,
 and $\tilde{\bz}_{0:t-1}\in\R^{t-1}_+$ be all previous scores.
 The model takes the form a language model, where
@@ -146,8 +152,9 @@ output of a previous LSTMN layer.
 \label{subsec:attn}
 As all attention modules in the PRPN network use the same formulation of attention we will use 
 $y_t$ to refer to the input of the attention module,
-$\bm{g}_t(l_t)$ the gate coefficients which are a function of the RV left-most limit $l_t$,
+$\bm{g}_t(l_t)$ the gate coefficients which are a function of the RV $l_t$,
 $\bm{m}_t$ as the memories to attend over, and $\bm{s}_t$ as the attention coefficients.
+The RV $l_t$ corresponds to the index of the token that satisfies condition (a) or (b).
 First the key is computed using a linear projection of the input $k_t = W_ky_t$.
 Then the intermediate scores are computed
 $$\tilde{s}^i_t = \textrm{softmax}\left(\frac{m^i_tk^T_t}{\sqrt{\delta_k}}\right),$$
@@ -171,41 +178,25 @@ where we allow the model at timestep $t$ to only attend up to the token at leftm
 We would then renormalize the attention accordingly.
 In order to calculate the gates $g^i_t(l_t)$ we must model $p(l_t\mid\bx_{0:t})$ 
 
-We then would have $$g_i^t = \left\{\begin{array}{lr}
-1, & l_t \le i < t\\
-0, & \textrm{otherwise.}
-\end{array}\right.$$
-where we allow the model at timestep $t$ to only attend up to the token at $l_t$.
-We then renormalize the attention accordingly.
-In order to calculate the gates $g_i^t$ we must model $p(l_t\mid\bx_{0:t})$ 
->>>>>>> f3dcfb2131bdd3df87784d07df2ecb17b3bf9eb9
 (\citet{shen2018prpn} use the posterior distribution in their notation).
 They propose to model 
 $$p(l_t=i\mid\bx_{0:t-1})=(1-\alpha_i^t)\prod_{j=i+1}^{t-1}\alpha_j^t$$
-using a stick-breaking process.
+using a stick-breaking process (GEM).
+The reason this is preferred over a simple categorical distribution over indices is because
+of the parameterization of the model.
+Although unlikely, a bimodal distribution is possible with a categorical distribution.
+I believe it would be possible to reparameterize the model and constrain the parameterization of a 
+categorical distribution to achieve a similar effect.
 
-Why not categorical?
-
-A Dirichlet Process is used instead of a categorical distribution since it encodes the bias that 
-nearer words should receive more ???? wut??
-Encodes bias that we should attend to nearer words since we have a multiplicative
-decrease in mass.
-But this has nothing to do with the parameterization.
-The stick-breaking process is a sequence of local decisions,
-whereas with a gibbs distribution the scores are predicted individually then globally normalized.
-This lines up with the ranking procedure, since the ranking procedure uses pairwise comparisons.
-Learning to rank through sorting???
-But the parameterization of the sorting is global as well.
-Given that we have a global ranking, could we parameterize a categorical distribution
-that preserves the induced self-attention distributions?
-
-Is this really a Dirichlet Process?
+Note that this itself is not a Dirichlet Process, as there is no base measure $H_0$.
 In a $DP(\alpha, H_0)$ we have $\pi \sim GEM(\alpha)$,
 where $b_i \sim Beta(1,\alpha)$ and $\pi_i = (1-b_i)\prod_{j=0}^{i-1}b_j$.
 We then have $\theta_i\sim H_0$ and $G = \sum_i\pi_i\delta_{\theta_i}\sim DP(\alpha, H_0)$.
-
+In the appendix of \citet{shen2018prpn} the say they use a Dirichlet process to model $p(l_t)$,
+however this is not the case.
 Another indication that they are not truly using a Dirichlet Process is the fact that
 the only way $p(l_t) = DP$ is if the base distribution is Dirichlet as well.
+This seems complicated and would definitely warrant further explanation.
 
 Rather than resorting to approximate inference, they instead use the expected value of $g_i^t$
 $$\E{g_i^t(l_t)} = F_{l_t}(l_t \le i\mid\bx_{0:t-1}) = \prod_{j=i+1}^{t-1}\alpha_j^t.$$
@@ -220,6 +211,10 @@ so an estimate is used based on the previous $k$ words, where $k$ is the
 kernel width of the convolution.
 However, afterwards \citet{shen2018prpn} use the posterior score $d_i \mid x_{i-K},\ldots, x_i$
 for all $d_i$ when $i < t$.
+
+\section{Results}
+The language modeling results are nothing special,
+but the results on unsupervised parsing are interesting.
 
 \begin{comment}
 \section{Comparison to CCM \citep{klein-2002-ccm}}

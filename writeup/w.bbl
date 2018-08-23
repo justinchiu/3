@@ -1,45 +1,9 @@
-\begin{thebibliography}{6}
+\begin{thebibliography}{2}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
-
-\bibitem[Golland et~al.(2012)Golland, DeNero, and Uszkoreit]{golland-2012-ccm}
-Dave Golland, John DeNero, and Jakob Uszkoreit.
-\newblock A feature-rich constituent context model for grammar induction.
-\newblock In \emph{The 50th Annual Meeting of the Association for Computational
-  Linguistics, Proceedings of the Conference, July 8-14, 2012, Jeju Island,
-  Korea - Volume 2: Short Papers}, pages 17--22. The Association for Computer
-  Linguistics, 2012.
-\newblock ISBN 978-1-937284-25-1.
-\newblock URL \url{http://www.aclweb.org/anthology/P12-2004}.
-
-\bibitem[Huang et~al.(2012)Huang, Zhang, and Tan]{huang-2012-ccm}
-Yun Huang, Min Zhang, and Chew~Lim Tan.
-\newblock Improved constituent context model with features.
-\newblock In \emph{{PACLIC}}, pages 564--573. {PACLIC} 26 Organizing Committee
-  and {PACLIC} Steering Committee / {ACL} / Faculty of Computer Science,
-  Universitas Indonesia, 2012.
-
-\bibitem[Klein and Manning(2002{\natexlab{a}})]{klein-2002-ccm}
-Dan Klein and Christopher~D. Manning.
-\newblock A generative constituent-context model for improved grammar
-  induction.
-\newblock In \emph{Proceedings of the 40th Annual Meeting of the Association
-  for Computational Linguistics, July 6-12, 2002, Philadelphia, PA, {USA.}},
-  pages 128--135. {ACL}, 2002{\natexlab{a}}.
-\newblock URL \url{http://www.aclweb.org/anthology/P02-1017.pdf}.
-
-\bibitem[Klein and Manning(2002{\natexlab{b}})]{klein-2002-ccm2}
-Dan Klein and Christopher~D. Manning.
-\newblock A generative constituent-context model for improved grammar
-  induction.
-\newblock In \emph{Proceedings of the 40th Annual Meeting on Association for
-  Computational Linguistics}, ACL '02, pages 128--135, Stroudsburg, PA, USA,
-  2002{\natexlab{b}}. Association for Computational Linguistics.
-\newblock \doi{10.3115/1073083.1073106}.
-\newblock URL \url{https://doi.org/10.3115/1073083.1073106}.
 
 \bibitem[Shen et~al.(2018)Shen, Lin, wei Huang, and Courville]{shen2018prpn}
 Yikang Shen, Zhouhan Lin, Chin wei Huang, and Aaron Courville.
