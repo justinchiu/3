@@ -116,21 +116,36 @@ of token $x_t$ that has higher rank, denoted $x_{l_t}$, also satisfies condition
 given token $i$ with the next highest rank, create a subtree $(x_{<i}, (x_i, x_{>i}))$ and
 recursively perform this procedure until only terminal nodes remain.
 
-[Example on board]
-
 \subsection{Ranking Models}
+Before discussing the \citet{shen2018prpn} model, we first introduce
+two possible ranking models, where both assign each item a latent score:
 \begin{enumerate}
-\item Plackett-Luce / Thurstone: Hidden score, select $i$th ranking item with logistic regression with remaining items.
-\item Pairwise Comparison Model (Bradley-Terry): hidden score, pairwise comparisons with log-odds.
+\item Plackett-Luce / Thurstone:
+There is a hidden score assigned to every item.
+The $i$th ranking item is chosen from a categorical distribution 
+parameterized by the output of a softmax over the remaining item's scores.
+\item Pairwise Comparison Model (Bradley-Terry):
+The same as PL, but samples pairwise comparisons from a bernoulli distribution
+using the item's scores.
 \end{enumerate}
-\citet{shen2018prpn} implicitly use the Bradley-Terry (pairwise) model of ranking for training and language modeling,
+One could use the Bradley-Terry (pairwise)
+model of ranking for training and language modeling,
 but then switch to the Plackett-Luce model at test time for outputting parse trees.
+A soft pairwise model is used because it does not rely on future information and thus
+is easy to train as a language model.
+Once the scoring model is trained, we could use those scores to parameterize a global
+PL/Thurstone model.
+
+However, \citet{shen2018prpn} decide to instead
+model as a RV the index $l_t$ (at every timestep) instead of the pairwise comparisons.
+We will get into to the details of their choices in section~\ref{subsec:gates}.
 
 \subsection{Their Model}
-Let $x_t$ be the current token, $\bx_{0:t-1}$ all previous tokens, $z_t$ the prediction for the current score,
+Let $x_t$ be the current token, $\bx_{0:t-1}$ all previous tokens,
+$z_t$ the prediction for the current score,
 and $\tilde{\bz}_{0:t-1}\in\R^{t-1}_+$ be all previous scores.
-The model takes the form a language model, where
-the distribution over the next token
+The model takes the form a language model,
+where the distribution over the next token
 $$p(x_t\mid \bx_{0:t-1}, \tilde{\bz}_{0:t-1},z_t) = f([h_{l_t:t-1},h_t])$$
 is parameterized by either a linear projection or additional residual blocks
 applied to a concatenation of the output of modified LSTMN (LSTM Memory-Network) $h_t$
@@ -211,6 +226,12 @@ so an estimate is used based on the previous $k$ words, where $k$ is the
 kernel width of the convolution.
 However, afterwards \citet{shen2018prpn} use the posterior score $d_i \mid x_{i-K},\ldots, x_i$
 for all $d_i$ when $i < t$.
+
+\section{Training}
+With the model that uses the expectation of $g_i^t(l_t)$
+training is very simple.
+We simply maximize the likelihood of the data directly since the model has no
+sampling.
 
 \section{Results}
 The language modeling results are nothing special,
