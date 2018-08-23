@@ -21,6 +21,7 @@
 \usepackage{wrapfig}
 \usepackage{comment}
 \usepackage{subcaption}
+\usepackage{booktabs}
 
 % Symbols
 \newcommand\ind{\protect\mathpalette{\protect\independenT}{\perp}}
@@ -118,15 +119,31 @@ recursively perform this procedure until only terminal nodes remain.
 
 \subsection{Ranking Models}
 Before discussing the \citet{shen2018prpn} model, we first introduce
-two possible ranking models, where both assign each item a latent score:
+some notation and two possible ranking models, where both assign each item a latent score.
+Let $\pi(i)$ denote the rank given to item $i$, and $\pi^{-1}(j)$ denote the 
+item at rank $j$.
 \begin{enumerate}
 \item Plackett-Luce / Thurstone:
-There is a hidden score assigned to every item.
-The $i$th ranking item is chosen from a categorical distribution 
+There is a hidden score $\theta_i$ assigned to every item $i$.
+The $j$th ranking item is chosen from a categorical distribution 
 parameterized by the output of a softmax over the remaining item's scores.
+Here we have $\bz = \{\pi^{-1}(0),\pi^{-1}(1),\ldots,\pi^{-1}(T)\}$.
+The probability of a given permutation is
+$$
+p(\bz)
+= \prod_{i=0}^T\frac{\exp(\theta_{z_i})}{\sum_{k=i}^T \exp(\theta_{z_k})}
+= \prod_{i=0}^T\frac{\exp(\theta_{\pi^{-1}(i)})}{\sum_{k=i}^T \exp(\theta_{\pi^{-1}(k)})}
+$$
 \item Pairwise Comparison Model (Bradley-Terry):
 The same as PL, but samples pairwise comparisons from a bernoulli distribution
 using the item's scores.
+The probability that item $i$ is ranked higher than item $k$ is 
+$\frac{\theta_{z_i}}{\theta_{z_i}+\theta_{z_k}}$.
+Similary, we have the probability of a permutation is
+$$
+p(\bz) 
+= \prod_{i=0}^T\prod_{k=i+1}^T\frac{\theta_{z_i}}{\theta_{z_i}+\theta_{z_k}}
+$$
 \end{enumerate}
 One could use the Bradley-Terry (pairwise)
 model of ranking for training and language modeling,
@@ -234,8 +251,74 @@ We simply maximize the likelihood of the data directly since the model has no
 sampling.
 
 \section{Results}
-The language modeling results are nothing special,
-but the results on unsupervised parsing are interesting.
+\subsection{Language Modeling}
+
+The language modeling results are decent, but it's unclear whether the
+gating mechanism offers any improvement.
+They perform ablation studies, but they do not seem to be replicable
+so it is possible the perplexity improvements come 
+mainly from embedding-tying and partly from self-attention.
+
+\begin{table}[h!]                                                                 
+\centering                                                                       
+  \begin{tabular}{ c c }                                                         
+    \toprule[2pt]                                                                
+    Model & PPL \\                                                               
+    \hline                                                                       
+    RNN-LDA + KN-5 + cache \citep{mikolov2012context} &  92.0 \\                 
+    LSTM \citep{zaremba2014recurrent} & 78.4 \\                                  
+    Variational LSTM \citep{kim2016character} & 78.9 \\                          
+    CharCNN \citep{kim2016character} & 78.9 \\                                   
+    Pointer Sentinel-LSTM \citep{merity2016pointer} & 70.9 \\                    
+    LSTM + continuous cache pointer \citep{grave2016improving} & 72.1 \\         
+    Variational LSTM (tied) + augmented loss \citep{inan2016tying} & 68.5 \\     
+    Variational RHN (tied) \citep{zilly2016recurrent} & 65.4 \\                  
+    NAS Cell (tied)  \citep{zoph2016neural} & 62.4 \\                            
+    4-layer skip connection LSTM (tied) \citep{melis2017state} & \textbf{58.3} \\
+%     3-layer AWD-LSTM (tied) \citep{merity2017regularizing} & \textbf{57.3} \\  
+    \hline                                                                       
+    PRPN & 61.98 \\                                                              
+    \toprule[2pt]                                                                
+  \end{tabular}                                                                  
+  \caption{PPL on the Penn Treebank test set}                                    
+  \label{tab_ptb_word}                                                           
+\end{table}                                                                      
+
+
+\subsection{Parsing}
+The parsing results, on the other hand, are quite good.
+On WSJ10, the model beats the right-branching baseline but not the CCM model.
+On the full WSJ, the model gets an averaged sentence F1 of 38.8,
+which beats random, balanced, and right branching baselines
+(the highest F1 reported is 21.3).
+Why should we care about this?
+There is no reason apriori that limiting self-attention should work at all
+for learning to rank, as a fully left-branching structure would
+allow the self-attention to function as normal. 
+
+\begin{table}[h!]                                    
+\centering                                          
+  \begin{tabular}{ c c }                            
+    \toprule[2pt]                                   
+    Model & $\mathrm{UF}_1$ \\                      
+    \hline                                          
+    LBRANCH &  28.7 \\                              
+    RANDOM & 34.7 \\                                
+    DEP-PCFG \citep{carroll1992two} & 48.2 \\       
+    RBRANCH & 61.7 \\                               
+    CCM \citep{klein2002generative} & 71.9 \\       
+    DMV+CCM \citep{klein2005natural} & 77.6 \\      
+    UML-DOP \citep{bod2006all} & \textbf{82.9} \\   
+    \hline                                          
+    PRPN & 66.4 \\                                 
+    \hline                                          
+    UPPER BOUND & 88.1 \\                           
+    \toprule[2pt]                                   
+  \end{tabular}                                     
+  \caption{Parsing Performance on the WSJ10 dataset}
+  \label{tb_parser}                                 
+\end{table}                                         
+
 
 \begin{comment}
 \section{Comparison to CCM \citep{klein-2002-ccm}}
@@ -244,7 +327,6 @@ but the results on unsupervised parsing are interesting.
 \section{Comparison to StructVae \citep{yin18structvae}}
 Hm, if we generated context given span, would that encourage non-constituents?
 General question about segmental models.
-\end{comment}
 
 \section{Related Work}
 
@@ -272,6 +354,7 @@ Leave all self attentions as is?
 
 for next time, convince Sasha of why this is interesting.
 Also go over stick breaking process.
+\end{comment}
 
 \bibliographystyle{plainnat}
 \bibliography{w}
