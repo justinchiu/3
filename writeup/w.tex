@@ -126,7 +126,7 @@ item at rank $j$.
 \item Plackett-Luce / Thurstone:
 There is a hidden score $\theta_i$ assigned to every item $i$.
 The $j$th ranking item is chosen from a categorical distribution 
-parameterized by the output of a softmax over the remaining item's scores.
+parameterized by the output of a softmax over the remaining items' scores.
 Here we have $\bz = \{\pi^{-1}(0),\pi^{-1}(1),\ldots,\pi^{-1}(T)\}$.
 The probability of a given permutation is
 $$
@@ -146,12 +146,10 @@ p(\bz)
 $$
 \end{enumerate}
 One could use the Bradley-Terry (pairwise)
-model of ranking for training and language modeling,
+model of ranking for training a language model,
 but then switch to the Plackett-Luce model at test time for outputting parse trees.
-A soft pairwise model is used because it does not rely on future information and thus
-is easy to train as a language model.
-Once the scoring model is trained, we could use those scores to parameterize a global
-PL/Thurstone model.
+This would allow us to learn a scoring model which can then be shared between the 
+pairwise and global ranking models.
 
 However, \citet{shen2018prpn} decide to instead
 model as a RV the index $l_t$ (at every timestep) instead of the pairwise comparisons.
@@ -159,11 +157,11 @@ We will get into to the details of their choices in section~\ref{subsec:gates}.
 
 \subsection{Their Model}
 Let $x_t$ be the current token, $\bx_{0:t-1}$ all previous tokens,
-$z_t$ the prediction for the current score,
-and $\tilde{\bz}_{0:t-1}\in\R^{t-1}_+$ be all previous scores.
+$d_t$ the prediction for the current score,
+and $\bd_{0:t-1}\in\R^{t-1}_+$ be all previous scores.
 The model takes the form a language model,
 where the distribution over the next token
-$$p(x_t\mid \bx_{0:t-1}, \tilde{\bz}_{0:t-1},z_t) = f([h_{l_t:t-1},h_t])$$
+$$p(x_t\mid \bx_{0:t-1}, \tilde{\bd}_{0:t-1},d_t) = f([h_{l_t:t-1},h_t])$$
 is parameterized by either a linear projection or additional residual blocks
 applied to a concatenation of the output of modified LSTMN (LSTM Memory-Network) $h_t$
 and a convex combination of the previous LSTMN outputs (i.e. attention over $h_{l_t:t-1}$).
@@ -224,17 +222,15 @@ Note that this itself is not a Dirichlet Process, as there is no base measure $H
 In a $DP(\alpha, H_0)$ we have $\pi \sim GEM(\alpha)$,
 where $b_i \sim Beta(1,\alpha)$ and $\pi_i = (1-b_i)\prod_{j=0}^{i-1}b_j$.
 We then have $\theta_i\sim H_0$ and $G = \sum_i\pi_i\delta_{\theta_i}\sim DP(\alpha, H_0)$.
-In the appendix of \citet{shen2018prpn} the say they use a Dirichlet process to model $p(l_t)$,
-however this is not the case.
-Another indication that they are not truly using a Dirichlet Process is the fact that
+Another indication that this is not a Dirichlet Process is the fact that
 the only way $p(l_t) = DP$ is if the base distribution is Dirichlet as well.
 This seems complicated and would definitely warrant further explanation.
 
 Rather than resorting to approximate inference, they instead use the expected value of $g_i^t$
 $$\E{g_i^t(l_t)} = F_{l_t}(l_t \le i\mid\bx_{0:t-1}) = \prod_{j=i+1}^{t-1}\alpha_j^t.$$
 The $\alpha_j^t = \sigma(d_t - d_j)$, where $\sigma$ is the hard sigmoid function.
-This is not stated in the paper (there are a couple off-by-one) errors,
-but it must be that $g_{t-1}^t = 1$.
+%This is not stated in the paper (there are a couple off-by-one) errors,
+%but it must be that $g_{t-1}^t = 1$.
 The $d_j\in\R_+$ are given by a CNN over the token embeddings.
 
 The network used to compute the gates is called the Parsing Network.
@@ -247,8 +243,8 @@ for all $d_i$ when $i < t$.
 \section{Training}
 With the model that uses the expectation of $g_i^t(l_t)$
 training is very simple.
-We simply maximize the likelihood of the data directly since the model has no
-sampling.
+We simply maximize the likelihood of the data directly since the model 
+is fully soft.
 
 \section{Results}
 \subsection{Language Modeling}
@@ -297,20 +293,20 @@ for learning to rank, as a fully left-branching structure would
 allow the self-attention to function as normal. 
 
 \begin{table}[h!]                                    
-\centering                                          
-  \begin{tabular}{ c c }                            
-    \toprule[2pt]                                   
-    Model & $\mathrm{UF}_1$ \\                      
-    \hline                                          
-    LBRANCH &  28.7 \\                              
-    RANDOM & 34.7 \\                                
-    DEP-PCFG \citep{carroll1992two} & 48.2 \\       
-    RBRANCH & 61.7 \\                               
-    CCM \citep{klein2002generative} & 71.9 \\       
-    DMV+CCM \citep{klein2005natural} & 77.6 \\      
-    UML-DOP \citep{bod2006all} & \textbf{82.9} \\   
-    \hline                                          
-    PRPN & 66.4 \\                                 
+\centering
+  \begin{tabular}{ c c }
+    \toprule[2pt]
+    Model & $\mathrm{UF}_1$ \\
+    \hline
+    LBRANCH &  28.7 \\
+    RANDOM & 34.7 \\
+    DEP-PCFG \citep{carroll1992two} & 48.2 \\
+    RBRANCH & 61.7 \\
+    CCM \citep{klein2002generative} & 71.9 \\
+    DMV+CCM \citep{klein2005natural} & 77.6 \\
+    UML-DOP \citep{bod2006all} & \textbf{82.9} \\
+    \hline
+    PRPN & 66.4 \\
     \hline                                          
     UPPER BOUND & 88.1 \\                           
     \toprule[2pt]                                   
