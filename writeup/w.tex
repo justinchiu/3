@@ -150,6 +150,9 @@ model of ranking for training a language model,
 but then switch to the Plackett-Luce model at test time for outputting parse trees.
 This would allow us to learn a scoring model which can then be shared between the 
 pairwise and global ranking models.
+In the pairwise model, we could model
+$$l_t = \max \set{i : \alpha_t^i = 1, 0\leq i<t},
+\alpha_t^i \sim \Bern\left(\frac{z_t}{z_t+z_i}\right).$$
 
 However, \citet{shen2018prpn} decide to instead
 model as a RV the index $l_t$ (at every timestep) instead of the pairwise comparisons.
@@ -241,8 +244,7 @@ However, afterwards \citet{shen2018prpn} use the posterior score $d_i \mid x_{i-
 for all $d_i$ when $i < t$.
 
 \section{Training}
-With the model that uses the expectation of $g_i^t(l_t)$
-training is very simple.
+With the model that uses the expectation of $g_i^t(l_t)$ training is very simple.
 We simply maximize the likelihood of the data directly since the model 
 is fully soft.
 
