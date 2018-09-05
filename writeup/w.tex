@@ -117,47 +117,6 @@ of token $x_t$ that has higher rank, denoted $x_{l_t}$, also satisfies condition
 given token $i$ with the next highest rank, create a subtree $(x_{<i}, (x_i, x_{>i}))$ and
 recursively perform this procedure until only terminal nodes remain.
 
-\subsection{Ranking Models}
-Before discussing the \citet{shen2018prpn} model, we first introduce
-some notation and two possible ranking models, where both assign each item a latent score.
-Let $\pi(i)$ denote the rank given to item $i$, and $\pi^{-1}(j)$ denote the 
-item at rank $j$.
-\begin{enumerate}
-\item Plackett-Luce / Thurstone:
-There is a hidden score $\theta_i$ assigned to every item $i$.
-The $j$th ranking item is chosen from a categorical distribution 
-parameterized by the output of a softmax over the remaining items' scores.
-Here we have $\bz = \{\pi^{-1}(0),\pi^{-1}(1),\ldots,\pi^{-1}(T)\}$.
-The probability of a given permutation is
-$$
-p(\bz)
-= \prod_{i=0}^T\frac{\exp(\theta_{z_i})}{\sum_{k=i}^T \exp(\theta_{z_k})}
-= \prod_{i=0}^T\frac{\exp(\theta_{\pi^{-1}(i)})}{\sum_{k=i}^T \exp(\theta_{\pi^{-1}(k)})}
-$$
-\item Pairwise Comparison Model (Bradley-Terry):
-The same as PL, but samples pairwise comparisons from a bernoulli distribution
-using the item's scores.
-The probability that item $i$ is ranked higher than item $k$ is 
-$\frac{\theta_{z_i}}{\theta_{z_i}+\theta_{z_k}}$.
-Similary, we have the probability of a permutation is
-$$
-p(\bz) 
-= \prod_{i=0}^T\prod_{k=i+1}^T\frac{\theta_{z_i}}{\theta_{z_i}+\theta_{z_k}}
-$$
-\end{enumerate}
-One could use the Bradley-Terry (pairwise)
-model of ranking for training a language model,
-but then switch to the Plackett-Luce model at test time for outputting parse trees.
-This would allow us to learn a scoring model which can then be shared between the 
-pairwise and global ranking models.
-In the pairwise model, we could model
-$$l_t = \max \set{i : \alpha_t^i = 1, 0\leq i<t},
-\alpha_t^i \sim \Bern\left(\frac{z_t}{z_t+z_i}\right).$$
-
-However, \citet{shen2018prpn} decide to instead
-model as a RV the index $l_t$ (at every timestep) instead of the pairwise comparisons.
-We will get into to the details of their choices in section~\ref{subsec:gates}.
-
 \subsection{Their Model}
 Let $x_t$ be the current token, $\bx_{0:t-1}$ all previous tokens,
 $d_t$ the prediction for the current score,
@@ -316,6 +275,47 @@ allow the self-attention to function as normal.
   \caption{Parsing Performance on the WSJ10 dataset}
   \label{tb_parser}                                 
 \end{table}                                         
+
+\subsection{Ranking Models}
+Before discussing the \citet{shen2018prpn} model, we first introduce
+some notation and two possible ranking models, where both assign each item a latent score.
+Let $\pi(i)$ denote the rank given to item $i$, and $\pi^{-1}(j)$ denote the 
+item at rank $j$.
+\begin{enumerate}
+\item Plackett-Luce / Thurstone:
+There is a hidden score $\theta_i$ assigned to every item $i$.
+The $j$th ranking item is chosen from a categorical distribution 
+parameterized by the output of a softmax over the remaining items' scores.
+Here we have $\bz = \{\pi^{-1}(0),\pi^{-1}(1),\ldots,\pi^{-1}(T)\}$.
+The probability of a given permutation is
+$$
+p(\bz)
+= \prod_{i=0}^T\frac{\exp(\theta_{z_i})}{\sum_{k=i}^T \exp(\theta_{z_k})}
+= \prod_{i=0}^T\frac{\exp(\theta_{\pi^{-1}(i)})}{\sum_{k=i}^T \exp(\theta_{\pi^{-1}(k)})}
+$$
+\item Pairwise Comparison Model (Bradley-Terry):
+The same as PL, but samples pairwise comparisons from a bernoulli distribution
+using the item's scores.
+The probability that item $i$ is ranked higher than item $k$ is 
+$\frac{\theta_{z_i}}{\theta_{z_i}+\theta_{z_k}}$.
+Similary, we have the probability of a permutation is
+$$
+p(\bz) 
+= \prod_{i=0}^T\prod_{k=i+1}^T\frac{\theta_{z_i}}{\theta_{z_i}+\theta_{z_k}}
+$$
+\end{enumerate}
+One could use the Bradley-Terry (pairwise)
+model of ranking for training a language model,
+but then switch to the Plackett-Luce model at test time for outputting parse trees.
+This would allow us to learn a scoring model which can then be shared between the 
+pairwise and global ranking models.
+In the pairwise model, we could model
+$$l_t = \max \set{i : \alpha_t^i = 1, 0\leq i<t},
+\alpha_t^i \sim \Bern\left(\frac{z_t}{z_t+z_i}\right).$$
+
+However, \citet{shen2018prpn} decide to instead
+model as a RV the index $l_t$ (at every timestep) instead of the pairwise comparisons.
+We will get into to the details of their choices in section~\ref{subsec:gates}.
 
 
 \begin{comment}
