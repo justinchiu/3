@@ -111,89 +111,120 @@ In addition to modeling the tokens,
 \citet{shen2018prpn} introduce a latent variable at every timestep $l_t$. 
 They decompose the joint distribution 
 \begin{equation}
-p(\bx, \bl) = \prod_t p(x_t,l_t\mid\bx_{<t}) = \prod_t p(x_t\mid l_t,\bx_{<t})p(l_t\mid\bx_{<t}).
+p(\bx, \bl)
+= \prod_t p(x_{t+1},l_t\mid\bx_{\le t},\bl_{<t})
+= \prod_t p(x_{t+1}\mid l_t,\bx_{\le t},\bl_{<t})p(l_t\mid\bx_{\le t}).
 \end{equation}
-\subsection{$p(x_t\mid l_t,\bx_{<t})$}
-The first term takes the form a language model,
+
+\subsection{$p(x_{t+1}\mid l_t,\bx_{\le t},\bl_{<t})$}
+The first term takes the form of a self-attentive language model,
 where the distribution over the next token
-$$p(x_t\mid l_t,\bx_{<t}) = f([\bh_{l_t:t-1},h_t])$$
+$$p(x_{t+1}\mid l_t,\bx_{\le t},\bl_{<t}) = \textrm{softmax}(f(\bm{m}_{<t}, l_t))$$
 where $f$ is either a linear projection or additional residual blocks,
-applied to a concatenation of the output of modified LSTMN (LSTM Memory-Network) $h_t$
-and a convex combination of the previous LSTMN outputs (i.e. attention over $h_{l_t:t-1}$).
-$f$ is referred to as the Predict Network.
+composed with the output of an LSTMN (LSTM Memory-Network),
+as well as the latent variable $l_t$.
+The LSTMN attends over the previous $\bm{m}_{<t}$ to produce $m_t$,
+the current hidden state.
+This is referred to as the Predict Network.
 
-\subsubsection{LSTMN}
-\label{subsec:lstmn}
-The LSTMN, referred to as the Reading Network, is as follows:
-at each time step, the hidden and cell input are given by
-$$\{\tilde{h}_t,\tilde{c}_t\} = \sum_{i=1}^{t-1} s_i^t\{h_i,c_i\},$$
-a convex combination of the previous hidden and cell outputs.
-Then $$h_t,c_t = \texttt{LSTM}(\tilde{h}_t,\tilde{c}_t).$$
-The attention is computed in the same way as detailed in section~\ref{subsec:attn}.
-The input to the LSTMN module is either the previous token or the
-output of a previous LSTMN layer.
+The attention mechanism is defined similarly throughout their network.
+The recurrent input to the current timestep is a convex combination of
+all previous outputs of the current layer.
+Let $\bm{m}_{<t}$ be the concatenated output of all previous timesteps,
+then the recurrent input would be
+$$c = \sum_{i=0}^{t-1} s_i(l_t) m_i$$
+and the output of the layer at the current timestep would be
+$m_t = LSTM(c, x_t)$ where $s_i$ is the attention coefficient
+for that index at timestep $t$ and $x_t$ is the input.
 
-\subsubsection{Attention}
-\label{subsec:attn}
-As all attention modules in the PRPN network use the same formulation of attention we will use 
-$y_t$ to refer to the input of the attention module,
-$\bm{g}_t(l_t)$ the gate coefficients which are a function of the RV $l_t$,
-$\bm{m}_t$ as the memories to attend over, and $\bm{s}_t$ as the attention coefficients.
-The RV $l_t$ corresponds to the index of the token that satisfies condition (a) or (b).
-First the key is computed using a linear projection of the input $k_t = W_ky_t$.
-Then the intermediate scores are computed
-$$\tilde{s}^i_t = \textrm{softmax}\left(\frac{m^i_tk^T_t}{\sqrt{\delta_k}}\right),$$
-where $\delta_k$ is the dimension of the hidden state.
-Finally, the gate coefficients are normalized and used to prevent the attention from
-extending too far in the past.
-$$s^i_t = \frac{g^i_t(l_t)}{\sum_jg^j_t(l_t)}\tilde{s}^i_t,$$
-where the gate coefficients $\bm{g}_t(l_t)$ are detailed in section~\ref{subsec:gates}.
+The attention coefficients are a renormalized weighted sum of
+the dot-product attention we are used to.
+Let $\tilde{\bm{s}_t}\in\Delta^{t-2}$, the $t-2$ simplex, be the output of a softmax over
+the dot-product of memories $\bm{m}_{<t}$ and query $k_t$
+which is a linear function of the input $x_t$.
+We then define
+$$s_i(l_t) = \frac{g_i(l_t)\tilde{s}_i}{\sum_jg_j(l_t)\tilde{s}_j},$$
+where $g_i(l_t) = \mathbf{1}(l_t \le i)$.
+We have a set of these \textbf{per timestep}.
+Note that although we define $p(l_t)$ in the following section,
+we will end up using $\Es{l_t}{g_i(l_t)}$ as a soft approximation to the
+latent variable model.
 
-\subsubsection{Gating Self-attention}
-\label{subsec:gates}
-Recall that the gates $g^i_t$ also indirectly induce tree structure
-(due to the previously stated insight that modulating self-attention
-using a ranking induces a binary tree).
-At every timestep for token $x_t$,
-\citet{shen2018prpn} define a latent variable $l_t$ which corresponds to the index of the 
-token satisfying either condition (a) or (b).
+[Work through figure 1]
 
-We then would have $$g^i_t(l_t) = \mathbf{1}(l_t \le i < t)$$
-where we allow the model at timestep $t$ to only attend up to the token at leftmost limit $l_t$.
-We would then renormalize the attention accordingly.
-In order to calculate the gates $g^i_t(l_t)$ we must model $p(l_t\mid\bx_{0:t})$ 
+\begin{figure}
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+& 0 & 1 & 2 & 3 & 4\\
+\hline
+$\tilde{s}$ & 0.4 & 0.1 & 0.3 & 0.2 & \\
+\hline
+$g\mid l_4=2$         & 0   & 1   & 1   & 1   & - \\
+\hline
+$s(l_4=2)$     & 0 & 0.17 & 0.5 & 0.33 & -\\
+\hline
+\end{tabular}
+\caption{An example computation of the attention gates.
+Let $\alpha_i = \frac{d_t-d_i+1}{2}$ and $t=4$.}
+\end{figure}
+\begin{figure}
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+& 0 & 1 & 2 & 3 & 4\\
+\hline
+$\tilde{s}$ & 0.4 & 0.1 & 0.3 & 0.2 & \\
+\hline
+$d$         & 0.7 & 0.6 & 0.3 & 0.4 & 0.5\\
+\hline
+$\alpha$    & - & 0.45 & 0.6 & 0.55 & -\\
+\hline
+$p(l_4)$    & 0.45*0.6*0.55=0.1485 & (1-0.45)*0.6*0.55=0.1815 & (1-0.6)*0.55=0.22 & 1-0.55=0.45 &\\
+\hline
+$F_{l_4}$   & 0.1485 & 0.1815+0.1485=0.33=0.6*0.55 & 0.22+0.1815+0.1485=0.55 & 1 &\\
+\hline
+$s(\E{l_4})$ & 0.13 & 0.07 & 0.36 & 0.43 & -\\
+\hline
+\end{tabular}
+\caption{An example computation of the attention gates.
+Let $\alpha_i = \frac{d_t-d_i+1}{2}$ and $t=4$.}
+\end{figure}
 
-(\citet{shen2018prpn} use the posterior distribution in their notation).
-They propose to model 
-$$p(l_t=i\mid\bx_{0:t-1})=(1-\alpha_i^t)\prod_{j=i+1}^{t-1}\alpha_j^t$$
-using a stick-breaking process (GEM).
-The reason this is preferred over a simple categorical distribution over indices is because
-of the parameterization of the model.
-Although unlikely, a bimodal distribution is possible with a categorical distribution.
-I believe it would be possible to reparameterize the model and constrain the parameterization of a 
-categorical distribution to achieve a similar effect.
+\subsection{$p(l_t\mid\bx_{\le t})$}
+We define
+\begin{equation*}
+p(l_t=k\mid\bx_{\le t}) =\left\{\begin{array}{l l}
+1-\alpha_{t-1}, & k=t-1\\
+\prod_{j=1}^{t-1}\alpha_j, & k=0\\
+(1-\alpha_k)\prod_{j=k+1}^{t-1}\alpha_j, & \textrm{otherwise}
+\end{array}\right.
+\end{equation*}
+Where the $\alpha_k$ are drawn from `a Beta distribution'.
+This appears to be inspired by the stick-breaking process (GEM).
+But this cannot be called a Dirichlet Process, as a $DP(\alpha, H_0)$ is defined by
+$b_i\sim\Betad(1,\alpha),\pi_i=(1-b_i)\prod_{j=0}^{i-1}b_i,\bm{\pi}\sim GEM(\alpha)$
+and with $\theta_i\sim H_0$ we have $G = \sum_i\pi_i\delta_{\theta_i}\sim DP(\alpha, H_0)$.
+This would only make sense in this context if the base distribution $H_0$ were also Dirichlet,
+but this would likely warrant further discussion.
 
-Note that this itself is not a Dirichlet Process, as there is no base measure $H_0$.
-In a $DP(\alpha, H_0)$ we have $\pi \sim GEM(\alpha)$,
-where $b_i \sim Beta(1,\alpha)$ and $\pi_i = (1-b_i)\prod_{j=0}^{i-1}b_j$.
-We then have $\theta_i\sim H_0$ and $G = \sum_i\pi_i\delta_{\theta_i}\sim DP(\alpha, H_0)$.
-Another indication that this is not a Dirichlet Process is the fact that
-the only way $p(l_t) = DP$ is if the base distribution is Dirichlet as well.
-This seems complicated and would definitely warrant further explanation.
+Rather than proceed further in defining the generative model,
+\citet{shen2018prpn} instead claim that instead of using $g_i(l_t)$
+they use its expectation (taken wrt $l_t$).
+We have
+$$
+\Es{l_t}{g_i(l_t)} = \prod_{j=i+1}^{t-1}\alpha_j,
+$$
+and we then use
+$$\Es{l_t}{s_i(l_t)} = \frac{\Es{l_t}{g_i(l_t)}\tilde{s}_i}{\sum_j\Es{l_t}{g_j(l_t)}\tilde{s}_j}$$
+as the attention coefficients instead of $s_i(l_t)$.
+They then parameterize the $\alpha_k$ of timestep $t$ deterministically as follows:
+$$\alpha_k = \frac{\textrm{hardtanh}(2(d_t-d_k)/\tau+1)+1}{2},$$
+where $\tau$ is some scaling parameter.
+The $d_k$ are obtained from a CNN over the tokens $\bx_{k-L:k}$,
+where $L$ is the width of the convolution kernel (this is set to 5).
 
-Rather than resorting to approximate inference, they instead use the expected value of $g_i^t$
-$$\E{g_i^t(l_t)} = F_{l_t}(l_t \le i\mid\bx_{0:t-1}) = \prod_{j=i+1}^{t-1}\alpha_j^t.$$
-The $\alpha_j^t = \sigma(d_t - d_j)$, where $\sigma$ is the hard sigmoid function.
-%This is not stated in the paper (there are a couple off-by-one) errors,
-%but it must be that $g_{t-1}^t = 1$.
-The $d_j\in\R_+$ are given by a CNN over the token embeddings.
-
-The network used to compute the gates is called the Parsing Network.
-When computing $p(x_t\mid\ldots)$, we cannot use the posterior score $d_t$,
-so an estimate is used based on the previous $k$ words, where $k$ is the 
-kernel width of the convolution.
-However, afterwards \citet{shen2018prpn} use the posterior score $d_i \mid x_{i-K},\ldots, x_i$
-for all $d_i$ when $i < t$.
+[Work through Figure 2]
 
 \section{Training}
 With the model that uses the expectation of $g_i^t(l_t)$ training is very simple.
