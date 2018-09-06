@@ -60,6 +60,7 @@
 \newcommand{\be}{\mathbf{e}}
 \newcommand{\bg}{\mathbf{g}}
 \newcommand{\bh}{\mathbf{h}}
+\newcommand{\bl}{\mathbf{l}}
 \newcommand{\bw}{\mathbf{w}}
 \newcommand{\bx}{\mathbf{x}}
 \newcommand{\by}{\mathbf{y}}
@@ -102,29 +103,21 @@ testbed for linguistic hypotheses (of which I have none at the moment).
 \section{PRPN \citep{shen2018prpn}}
 The Parsing-Reading-Predict Network \citep{shen2018prpn} is an approach to unsupervised tree induction
 that uses a soft approximation to a latent variable to a degree of success.
-The paper is inspired by the following hypothesis:
-given a binary tree, a token at index $t$ only requires information up to index $l_t$ that satisfies
-either of the following conditions:
-\begin{itemize}
-\item[(a)] the token at $l_t$ is the leftmost sibling of the token at $t$
-\item[(b)] or, if the token at $t$ is a leftmost child, $l_t$ points to its parent's left sibling's leftmost child.
-\end{itemize}
-Although the hypothesis itself is not tested in the implementation and serves only as inspiration,
-the model does see empirical success in the task of language modeling.
-The model is realized through the following insight: given a ranking of tokens $\bx = \{x_0,\ldots,x_T\}$,
-recursively splitting $\bx$ using the following procedure induces a binary tree where the first token to the left
-of token $x_t$ that has higher rank, denoted $x_{l_t}$, also satisfies condition (a) or (b):
-given token $i$ with the next highest rank, create a subtree $(x_{<i}, (x_i, x_{>i}))$ and
-recursively perform this procedure until only terminal nodes remain.
 
-\subsection{Their Model}
-Let $x_t$ be the current token, $\bx_{0:t-1}$ all previous tokens,
-$d_t$ the prediction for the current score,
-and $\bd_{0:t-1}\in\R^{t-1}_+$ be all previous scores.
-The model takes the form a language model,
+\section{The Language Model}
+Let $\bx$ be all tokens
+and $\bl$ all latent variables with each $l_t\in\set{0,\ldots,t-1}$ a categorical RV over all previous indices.
+In addition to modeling the tokens,
+\citet{shen2018prpn} introduce a latent variable at every timestep $l_t$. 
+They decompose the joint distribution 
+\begin{equation}
+p(\bx, \bl) = \prod_t p(x_t,l_t\mid\bx_{<t}) = \prod_t p(x_t\mid l_t,\bx_{<t})p(l_t\mid\bx_{<t}).
+\end{equation}
+\subsection{$p(x_t\mid l_t,\bx_{<t})$}
+The first term takes the form a language model,
 where the distribution over the next token
-$$p(x_t\mid \bx_{0:t-1}, \tilde{\bd}_{0:t-1},d_t) = f([h_{l_t:t-1},h_t])$$
-is parameterized by either a linear projection or additional residual blocks
+$$p(x_t\mid l_t,\bx_{<t}) = f([\bh_{l_t:t-1},h_t])$$
+where $f$ is either a linear projection or additional residual blocks,
 applied to a concatenation of the output of modified LSTMN (LSTM Memory-Network) $h_t$
 and a convex combination of the previous LSTMN outputs (i.e. attention over $h_{l_t:t-1}$).
 $f$ is referred to as the Predict Network.
@@ -317,6 +310,20 @@ However, \citet{shen2018prpn} decide to instead
 model as a RV the index $l_t$ (at every timestep) instead of the pairwise comparisons.
 We will get into to the details of their choices in section~\ref{subsec:gates}.
 
+The paper is inspired by the following hypothesis:
+given a binary tree, a token at index $t$ only requires information up to index $l_t$ that satisfies
+either of the following conditions:
+\begin{itemize}
+\item[(a)] the token at $l_t$ is the leftmost sibling of the token at $t$
+\item[(b)] or, if the token at $t$ is a leftmost child, $l_t$ points to its parent's left sibling's leftmost child.
+\end{itemize}
+Although the hypothesis itself is not tested in the implementation and serves only as inspiration,
+the model does see empirical success in the task of language modeling.
+The model is realized through the following insight: given a ranking of tokens $\bx = \{x_0,\ldots,x_T\}$,
+recursively splitting $\bx$ using the following procedure induces a binary tree where the first token to the left
+of token $x_t$ that has higher rank, denoted $x_{l_t}$, also satisfies condition (a) or (b):
+given token $i$ with the next highest rank, create a subtree $(x_{<i}, (x_i, x_{>i}))$ and
+recursively perform this procedure until only terminal nodes remain.
 
 \begin{comment}
 \section{Comparison to CCM \citep{klein-2002-ccm}}
