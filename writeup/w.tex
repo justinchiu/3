@@ -165,8 +165,7 @@ $g\mid l_4=2$         & 0   & 1   & 1   & 1   & - \\
 $s(l_4=2)$     & 0 & 0.17 & 0.5 & 0.33 & -\\
 \hline
 \end{tabular}
-\caption{An example computation of the attention gates.
-Let $\alpha_i = \frac{d_t-d_i+1}{2}$ and $t=4$.}
+\caption{An example computation of the attention gates with the LVM. Let $t=4$.}
 \end{figure}
 \begin{figure}
 \centering
@@ -201,8 +200,14 @@ p(l_t=k\mid\bx_{\le t}) =\left\{\begin{array}{l l}
 \end{array}\right.
 \end{equation*}
 Where the $\alpha_k$ are drawn from `a Beta distribution'.
-This appears to be inspired by the stick-breaking process (GEM).
-But this cannot be called a Dirichlet Process, as a $DP(\alpha, H_0)$ is defined by
+Thus $l_t\sim\Cat(\theta)$ where the parameters $\theta$ are determined
+through a stick-breaking process. 
+This ends up looking more like a generalized geometric distribution,
+probability of success or failure at each time step is flexible and there is a 
+maximum number of trials, which hints at an order-statistic interpretation which 
+we will touch upon if there is time.
+
+Note that this cannot be called a Dirichlet Process, as a $DP(\alpha, H_0)$ is defined by
 $b_i\sim\Betad(1,\alpha),\pi_i=(1-b_i)\prod_{j=0}^{i-1}b_i,\bm{\pi}\sim GEM(\alpha)$
 and with $\theta_i\sim H_0$ we have $G = \sum_i\pi_i\delta_{\theta_i}\sim DP(\alpha, H_0)$.
 This would only make sense in this context if the base distribution $H_0$ were also Dirichlet,
@@ -226,10 +231,89 @@ where $L$ is the width of the convolution kernel (this is set to 5).
 
 [Work through Figure 2]
 
+\begin{comment}
+\subsubsection{LSTMN}
+\label{subsec:lstmn}
+The LSTMN, referred to as the Reading Network, is as follows:
+at each time step, the hidden and cell input are given by
+$$\{\tilde{h}_t,\tilde{c}_t\} = \sum_{i=1}^{t-1} s_i^t\{h_i,c_i\},$$
+a convex combination of the previous hidden and cell outputs.
+Then $$h_t,c_t = \texttt{LSTM}(\tilde{h}_t,\tilde{c}_t).$$
+The attention is computed in the same way as detailed in section~\ref{subsec:attn}.
+The input to the LSTMN module is either the previous token or the
+output of a previous LSTMN layer.
+
+\subsubsection{Attention}
+\label{subsec:attn}
+As all attention modules in the PRPN network use the same formulation of attention we will use 
+$y_t$ to refer to the input of the attention module,
+$\bm{g}_t(l_t)$ the gate coefficients which are a function of the RV $l_t$,
+$\bm{m}_t$ as the memories to attend over, and $\bm{s}_t$ as the attention coefficients.
+The RV $l_t$ corresponds to the index of the token that satisfies condition (a) or (b).
+First the key is computed using a linear projection of the input $k_t = W_ky_t$.
+Then the intermediate scores are computed
+$$\tilde{s}^i_t = \textrm{softmax}\left(\frac{m^i_tk^T_t}{\sqrt{\delta_k}}\right),$$
+where $\delta_k$ is the dimension of the hidden state.
+Finally, the gate coefficients are normalized and used to prevent the attention from
+extending too far in the past.
+$$s^i_t = \frac{g^i_t(l_t)}{\sum_jg^j_t(l_t)}\tilde{s}^i_t,$$
+where the gate coefficients $\bm{g}_t(l_t)$ are detailed in section~\ref{subsec:gates}.
+
+\subsubsection{Gating Self-attention}
+\label{subsec:gates}
+Recall that the gates $g^i_t$ also indirectly induce tree structure
+(due to the previously stated insight that modulating self-attention
+using a ranking induces a binary tree).
+At every timestep for token $x_t$,
+\citet{shen2018prpn} define a latent variable $l_t$ which corresponds to the index of the 
+token satisfying either condition (a) or (b).
+
+We then would have $$g^i_t(l_t) = \mathbf{1}(l_t \le i < t)$$
+where we allow the model at timestep $t$ to only attend up to the token at leftmost limit $l_t$.
+We would then renormalize the attention accordingly.
+In order to calculate the gates $g^i_t(l_t)$ we must model $p(l_t\mid\bx_{0:t})$ 
+
+(\citet{shen2018prpn} use the posterior distribution in their notation).
+They propose to model 
+$$p(l_t=i\mid\bx_{0:t-1})=(1-\alpha_i^t)\prod_{j=i+1}^{t-1}\alpha_j^t$$
+using a stick-breaking process (GEM).
+The reason this is preferred over a simple categorical distribution over indices is because
+of the parameterization of the model.
+Although unlikely, a bimodal distribution is possible with a categorical distribution.
+I believe it would be possible to reparameterize the model and constrain the parameterization of a 
+categorical distribution to achieve a similar effect.
+
+Note that this itself is not a Dirichlet Process, as there is no base measure $H_0$.
+In a $DP(\alpha, H_0)$ we have $\pi \sim GEM(\alpha)$,
+where $b_i \sim Beta(1,\alpha)$ and $\pi_i = (1-b_i)\prod_{j=0}^{i-1}b_j$.
+We then have $\theta_i\sim H_0$ and $G = \sum_i\pi_i\delta_{\theta_i}\sim DP(\alpha, H_0)$.
+Another indication that this is not a Dirichlet Process is the fact that
+the only way $p(l_t) = DP$ is if the base distribution is Dirichlet as well.
+This seems complicated and would definitely warrant further explanation.
+
+Rather than resorting to approximate inference, they instead use the expected value of $g_i^t$
+$$\E{g_i^t(l_t)} = F_{l_t}(l_t \le i\mid\bx_{0:t-1}) = \prod_{j=i+1}^{t-1}\alpha_j^t.$$
+The $\alpha_j^t = \sigma(d_t - d_j)$, where $\sigma$ is the hard sigmoid function.
+%This is not stated in the paper (there are a couple off-by-one) errors,
+%but it must be that $g_{t-1}^t = 1$.
+The $d_j\in\R_+$ are given by a CNN over the token embeddings.
+
+The network used to compute the gates is called the Parsing Network.
+When computing $p(x_t\mid\ldots)$, we cannot use the posterior score $d_t$,
+so an estimate is used based on the previous $k$ words, where $k$ is the 
+kernel width of the convolution.
+However, afterwards \citet{shen2018prpn} use the posterior score $d_i \mid x_{i-K},\ldots, x_i$
+for all $d_i$ when $i < t$.
+\end{comment}
+
 \section{Training}
-With the model that uses the expectation of $g_i^t(l_t)$ training is very simple.
+With the soft model that uses the expectation of $s_i(l_t)$ training is very simple.
 We simply maximize the likelihood of the data directly since the model 
-is fully soft.
+is fully neural.
+
+\section{Extracting a Parse Tree}
+Use greedy approximation,
+go over on board?
 
 \section{Results}
 \subsection{Language Modeling}
