@@ -364,9 +364,32 @@ However, we could use hard attention tricks to maximize the marginal likelihood 
 and the generative model is actually well-defined.
 This is known as a Bradley-Terry pairwise order statistic model.
 See Figure~\ref{fig:geom} for a worked example of some of this process.
-
+Under this model, the implementation of $l_t$ can be interpreted as allowing the model to attend up through 
+the nearest token to the left that has higher rank.
+This has a tree interpretation, but it is unintuitive.
 Once we learn a pairwise model, we can use the parameterization of the scores $d_i$
-to provide insight into the probabilistic model over rankings.
+to define a model over trees.
+The tree-based interpretation would then be:
+\begin{itemize}
+\item[(a)] either the token at $l_t$ is the leftmost sibling of the token at $t$
+\item[(b)] or if the token at $t$ is a leftmost child, $l_t$ points to its parent's left sibling's leftmost child.
+\end{itemize}
+
+To define a distribution over trees using scores, we follow a generative story
+similar to the split function.
+In order to define a tree, we recursively partition $\bx$:
+\begin{equation}
+p(\bx;\bd) = p(\textrm{choose} = i; \bd)p(\bx_{<t};\bd_{<t})p(\bx_{>t};\bd_{>t}),
+\end{equation}
+where $p(\textrm{choose} = i;\bd)=\frac{d_i}{\sum_j d_j}$.
+
+If we follow the split function exactly, we would instead define a distribution over rankings:
+\begin{equation}
+p(\bx;\bd) = p(\textrm{choose}= i; \bd)p(\bx\setminus\set{x_i}; \bd\setminus\set{d_i}),
+\end{equation}
+where the choice is parameterized in exactly the same way.
+Under this model, the split procedure can be seen as a greedy approach to finding
+the most likely tree under this distribution.
 
 \begin{figure}
 \centering
@@ -389,7 +412,7 @@ with a pairwise ranking model and $t=4$.
 It gives very similar probabilities when compared to the `stick-breaking' approach but is tractable.}
 \label{fig:geom}
 \end{figure}
-
+\begin{comment}
 \section{other stuff}
 Let $\pi(i)$ denote the rank given to item $i$, and $\pi^{-1}(j)$ denote the 
 item at rank $j$.
@@ -437,7 +460,6 @@ of token $x_t$ that has higher rank, denoted $x_{l_t}$, also satisfies condition
 given token $i$ with the next highest rank, create a subtree $(x_{<i}, (x_i, x_{>i}))$ and
 recursively perform this procedure until only terminal nodes remain.
 
-\begin{comment}
 \section{Comparison to CCM \citep{klein-2002-ccm}}
 \citep{klein-2002-ccm2}
 \citep{golland-2012-ccm,huang-2012-ccm}
