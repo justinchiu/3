@@ -87,8 +87,8 @@
 \begin{document}
 \maketitle
 
+\begin{comment}
 \section{Introduction}
-
 
 \section{Problem}
 We would like to learn a generative model
@@ -101,10 +101,13 @@ testbed for linguistic hypotheses (of which I have none at the moment).
 
 \citep{shen2018prpn}
 \citet{yin18structvae}
+\end{comment}
 
 \section{PRPN \citep{shen2018prpn}}
-The Parsing-Reading-Predict Network \citep{shen2018prpn} is an approach to unsupervised tree induction
+The Parsing-Reading-Predict Network \citep{shen2018prpn} is an approach to unsupervised constituency tree induction
 that uses a soft approximation to a latent variable to a degree of success.
+PRPN achieves this by learning a scoring model that limits the range of self-attention
+in a self-attentive language model.
 
 \section{The Language Model}
 Let $\bx$ be all tokens
