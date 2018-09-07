@@ -104,16 +104,16 @@ testbed for linguistic hypotheses (of which I have none at the moment).
 \end{comment}
 
 \section{PRPN \citep{shen2018prpn}}
-The Parsing-Reading-Predict Network \citep{shen2018prpn} is an approach to unsupervised constituency tree induction
-that uses a soft approximation to a latent variable to a degree of success.
+The Parsing-Reading-Predict Network \citep{shen2018prpn} is an approach to unsupervised constituency tree induction.
+%that uses a soft approximation to a latent variable to a degree of success.
 PRPN achieves this by learning a scoring model that limits the range of self-attention
-in a self-attentive language model.
+in a self-attentive language model, and then inducing tree structure using the scoring model.
 
 \section{The Language Model}
+In addition to modeling the tokens,
+\citet{shen2018prpn} introduce a latent variable at every timestep $t$. 
 Let $\bx$ be all tokens
 and $\bl$ all latent variables with each $l_t\in\set{0,\ldots,t-1}$ a categorical RV over all previous indices.
-In addition to modeling the tokens,
-\citet{shen2018prpn} introduce a latent variable at every timestep $l_t$. 
 They decompose the joint distribution 
 \begin{equation}
 p(\bx, \bl)
@@ -129,9 +129,14 @@ $$p(x_{t+1}\mid l_t,\bx_{\le t},\bl_{<t}) = \textrm{softmax}(f(\bm{m}_{<t}, l_t)
 where $f$ is either a linear projection or additional residual blocks,
 composed with the output of an LSTMN (LSTM Memory-Network),
 as well as the latent variable $l_t$.
+The portion of this network responsible for directly predicting the next word is
+referred to as the Predict Network, and the LSTMN is the Reading Network.
+We will define $l_t$ more rigorously in the following section.
+We can interpret $l_t$ as the leftmost limit of self-attention for the given timestep
+such that the model cannot assign any attention mass to a memory at index $< l_t$.
 The LSTMN attends over the previous $\bm{m}_{<t}$ to produce $m_t$,
 the current hidden state.
-This is referred to as the Predict Network.
+The input to the LSTMN is the current token $x_t$.
 
 The attention mechanism is defined similarly throughout their network.
 The recurrent input to the current timestep is a convex combination of
@@ -213,9 +218,10 @@ p(l_t=k\mid\bx_{\le t}) =\left\{\begin{array}{l l}
 Where the $\alpha_k$ are drawn from an unspecified Beta distribution.
 Thus $l_t\sim\Cat(\theta)$ where the parameters $\theta$ are determined
 through a stick-breaking process. 
-This ends up looking more like a generalized geometric distribution
-where probability of success at each time step is flexible and there is a 
-maximum number of trials.
+[Go over stick breaking process on board.]
+%This ends up looking more like a generalized geometric distribution
+%where probability of success at each time step is flexible and there is a 
+%maximum number of trials.
 This hints at an order-statistic interpretation which 
 we will touch upon if there is time.
 
@@ -451,9 +457,9 @@ either of the following conditions:
 \begin{itemize}
 \item[(a)] the token at $l_t$ is the leftmost sibling of the token at $t$
 \item[(b)] or, if the token at $t$ is a leftmost child, $l_t$ points to its parent's left sibling's leftmost child.
-\end{itemize}
-Although the hypothesis itself is not tested in the implementation and serves only as inspiration,
-the model does see empirical success in the task of language modeling.
+%\end{itemize}
+%Although the hypothesis itself is not tested in the implementation and serves only as inspiration,
+%the model does see empirical success in the task of language modeling.
 The model is realized through the following insight: given a ranking of tokens $\bx = \{x_0,\ldots,x_T\}$,
 recursively splitting $\bx$ using the following procedure induces a binary tree where the first token to the left
 of token $x_t$ that has higher rank, denoted $x_{l_t}$, also satisfies condition (a) or (b):
