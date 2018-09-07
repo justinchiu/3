@@ -226,8 +226,7 @@ This would only make sense in this context if the base distribution $H_0$ were a
 but this would likely warrant further discussion.
 
 Rather than proceed further in defining the generative model,
-\citet{shen2018prpn} instead pivot and instead of using $s_i(l_t)$
-they use its expectation (taken wrt $l_t$).
+\citet{shen2018prpn} pivot and use $\Es{l_t}{s_i(l_t)}$ instead of $s_i(l_t)$.
 We have
 \begin{equation}
 \Es{l_t}{g_i(l_t)} = \prod_{j=i+1}^{t-1}\alpha_j,
