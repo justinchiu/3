@@ -13,6 +13,8 @@
 
 % Math Imports
 \usepackage{amsmath, amssymb, bm, fancyhdr, sectsty, dsfont, mathtools}
+%\usepackage{algorithmic}
+\usepackage{algpseudocode}
 
 % Tikz
 \usepackage{tikz}
@@ -118,7 +120,7 @@ p(\bx, \bl)
 
 \subsection{$p(x_{t+1}\mid l_t,\bx_{\le t},\bl_{<t})$}
 The first term takes the form of a self-attentive language model,
-where the distribution over the next token
+where the distribution over the next token is
 $$p(x_{t+1}\mid l_t,\bx_{\le t},\bl_{<t}) = \textrm{softmax}(f(\bm{m}_{<t}, l_t))$$
 where $f$ is either a linear projection or additional residual blocks,
 composed with the output of an LSTMN (LSTM Memory-Network),
@@ -147,10 +149,11 @@ $$s_i(l_t) = \frac{g_i(l_t)\tilde{s}_i}{\sum_jg_j(l_t)\tilde{s}_j},$$
 where $g_i(l_t) = \mathbf{1}(l_t \le i)$.
 We have a set of these \textbf{per timestep}.
 Note that although we define $p(l_t)$ in the following section,
-we will end up using $\Es{l_t}{g_i(l_t)}$ as a soft approximation to the
+we will end up using $\Es{l_t}{s_i(l_t)}$ as a soft approximation to the
 latent variable model.
+The LSTMN is referred to as the Reading Network.
 
-[Work through figure 1]
+[Work through Figure~\ref{fig:hard}]
 
 \begin{figure}
 \centering
@@ -158,14 +161,15 @@ latent variable model.
 \hline
 & 0 & 1 & 2 & 3 & 4\\
 \hline
-$\tilde{s}$ & 0.4 & 0.1 & 0.3 & 0.2 & \\
+raw attn $\tilde{s}$ & 0.4 & 0.1 & 0.3 & 0.2 & \\
 \hline
-$g\mid l_4=2$         & 0   & 1   & 1   & 1   & - \\
+gates $g\mid l_4=2$         & 0   & 1   & 1   & 1   & - \\
 \hline
-$s(l_4=2)$     & 0 & 0.17 & 0.5 & 0.33 & -\\
+attn $s(l_4=2)$     & 0 & 0.17 & 0.5 & 0.33 & -\\
 \hline
 \end{tabular}
 \caption{An example computation of the attention gates with the LVM. Let $t=4$.}
+\label{fig:hard}
 \end{figure}
 \begin{figure}
 \centering
@@ -173,21 +177,24 @@ $s(l_4=2)$     & 0 & 0.17 & 0.5 & 0.33 & -\\
 \hline
 & 0 & 1 & 2 & 3 & 4\\
 \hline
-$\tilde{s}$ & 0.4 & 0.1 & 0.3 & 0.2 & \\
+raw attn $\tilde{s}$ & 0.4 & 0.1 & 0.3 & 0.2 & \\
 \hline
-$d$         & 0.7 & 0.6 & 0.3 & 0.4 & 0.5\\
+scores $d$         & 0.7 & 0.6 & 0.3 & 0.4 & 0.5\\
 \hline
 $\alpha$    & - & 0.45 & 0.6 & 0.55 & -\\
 \hline
 $p(l_4)$    & 0.45*0.6*0.55=0.1485 & (1-0.45)*0.6*0.55=0.1815 & (1-0.6)*0.55=0.22 & 1-0.55=0.45 &\\
 \hline
-$F_{l_4}$   & 0.1485 & 0.1815+0.1485=0.33=0.6*0.55 & 0.22+0.1815+0.1485=0.55 & 1 &\\
+cdf $F_{l_4}$   & 0.1485 & 0.33 & 0.55 & 1 &\\
 \hline
-$s(\E{l_4})$ & 0.13 & 0.07 & 0.36 & 0.43 & -\\
+soft attn $s(\E{l_4})$ & 0.13 & 0.07 & 0.36 & 0.43 & -\\
+\hline
+hard attn $s(l_4=2)$     & 0 & 0.17 & 0.5 & 0.33 & -\\
 \hline
 \end{tabular}
 \caption{An example computation of the attention gates.
 Let $\alpha_i = \frac{d_t-d_i+1}{2}$ and $t=4$.}
+\label{fig:soft}
 \end{figure}
 
 \subsection{$p(l_t\mid\bx_{\le t})$}
@@ -199,7 +206,7 @@ p(l_t=k\mid\bx_{\le t}) =\left\{\begin{array}{l l}
 (1-\alpha_k)\prod_{j=k+1}^{t-1}\alpha_j, & \textrm{otherwise}
 \end{array}\right.
 \end{equation*}
-Where the $\alpha_k$ are drawn from `a Beta distribution'.
+Where the $\alpha_k$ are drawn from an unspecified Beta distribution.
 Thus $l_t\sim\Cat(\theta)$ where the parameters $\theta$ are determined
 through a stick-breaking process. 
 This ends up looking more like a generalized geometric distribution,
@@ -214,7 +221,7 @@ This would only make sense in this context if the base distribution $H_0$ were a
 but this would likely warrant further discussion.
 
 Rather than proceed further in defining the generative model,
-\citet{shen2018prpn} instead claim that instead of using $g_i(l_t)$
+\citet{shen2018prpn} instead pivot and instead of using $s_i(l_t)$
 they use its expectation (taken wrt $l_t$).
 We have
 $$
@@ -226,103 +233,46 @@ as the attention coefficients instead of $s_i(l_t)$.
 They then parameterize the $\alpha_k$ of timestep $t$ deterministically as follows:
 $$\alpha_k = \frac{\textrm{hardtanh}(2(d_t-d_k)/\tau+1)+1}{2},$$
 where $\tau$ is some scaling parameter.
-The $d_k$ are obtained from a CNN over the tokens $\bx_{k-L:k}$,
+The scores $d_k\in\mathbb{R}^+$ are obtained from a CNN over the tokens $\bx_{k-L:k}$,
 where $L$ is the width of the convolution kernel (this is set to 5).
+The scores $d_k$ are output by the Parsing Network.
 
-[Work through Figure 2]
-
-\begin{comment}
-\subsubsection{LSTMN}
-\label{subsec:lstmn}
-The LSTMN, referred to as the Reading Network, is as follows:
-at each time step, the hidden and cell input are given by
-$$\{\tilde{h}_t,\tilde{c}_t\} = \sum_{i=1}^{t-1} s_i^t\{h_i,c_i\},$$
-a convex combination of the previous hidden and cell outputs.
-Then $$h_t,c_t = \texttt{LSTM}(\tilde{h}_t,\tilde{c}_t).$$
-The attention is computed in the same way as detailed in section~\ref{subsec:attn}.
-The input to the LSTMN module is either the previous token or the
-output of a previous LSTMN layer.
-
-\subsubsection{Attention}
-\label{subsec:attn}
-As all attention modules in the PRPN network use the same formulation of attention we will use 
-$y_t$ to refer to the input of the attention module,
-$\bm{g}_t(l_t)$ the gate coefficients which are a function of the RV $l_t$,
-$\bm{m}_t$ as the memories to attend over, and $\bm{s}_t$ as the attention coefficients.
-The RV $l_t$ corresponds to the index of the token that satisfies condition (a) or (b).
-First the key is computed using a linear projection of the input $k_t = W_ky_t$.
-Then the intermediate scores are computed
-$$\tilde{s}^i_t = \textrm{softmax}\left(\frac{m^i_tk^T_t}{\sqrt{\delta_k}}\right),$$
-where $\delta_k$ is the dimension of the hidden state.
-Finally, the gate coefficients are normalized and used to prevent the attention from
-extending too far in the past.
-$$s^i_t = \frac{g^i_t(l_t)}{\sum_jg^j_t(l_t)}\tilde{s}^i_t,$$
-where the gate coefficients $\bm{g}_t(l_t)$ are detailed in section~\ref{subsec:gates}.
-
-\subsubsection{Gating Self-attention}
-\label{subsec:gates}
-Recall that the gates $g^i_t$ also indirectly induce tree structure
-(due to the previously stated insight that modulating self-attention
-using a ranking induces a binary tree).
-At every timestep for token $x_t$,
-\citet{shen2018prpn} define a latent variable $l_t$ which corresponds to the index of the 
-token satisfying either condition (a) or (b).
-
-We then would have $$g^i_t(l_t) = \mathbf{1}(l_t \le i < t)$$
-where we allow the model at timestep $t$ to only attend up to the token at leftmost limit $l_t$.
-We would then renormalize the attention accordingly.
-In order to calculate the gates $g^i_t(l_t)$ we must model $p(l_t\mid\bx_{0:t})$ 
-
-(\citet{shen2018prpn} use the posterior distribution in their notation).
-They propose to model 
-$$p(l_t=i\mid\bx_{0:t-1})=(1-\alpha_i^t)\prod_{j=i+1}^{t-1}\alpha_j^t$$
-using a stick-breaking process (GEM).
-The reason this is preferred over a simple categorical distribution over indices is because
-of the parameterization of the model.
-Although unlikely, a bimodal distribution is possible with a categorical distribution.
-I believe it would be possible to reparameterize the model and constrain the parameterization of a 
-categorical distribution to achieve a similar effect.
-
-Note that this itself is not a Dirichlet Process, as there is no base measure $H_0$.
-In a $DP(\alpha, H_0)$ we have $\pi \sim GEM(\alpha)$,
-where $b_i \sim Beta(1,\alpha)$ and $\pi_i = (1-b_i)\prod_{j=0}^{i-1}b_j$.
-We then have $\theta_i\sim H_0$ and $G = \sum_i\pi_i\delta_{\theta_i}\sim DP(\alpha, H_0)$.
-Another indication that this is not a Dirichlet Process is the fact that
-the only way $p(l_t) = DP$ is if the base distribution is Dirichlet as well.
-This seems complicated and would definitely warrant further explanation.
-
-Rather than resorting to approximate inference, they instead use the expected value of $g_i^t$
-$$\E{g_i^t(l_t)} = F_{l_t}(l_t \le i\mid\bx_{0:t-1}) = \prod_{j=i+1}^{t-1}\alpha_j^t.$$
-The $\alpha_j^t = \sigma(d_t - d_j)$, where $\sigma$ is the hard sigmoid function.
-%This is not stated in the paper (there are a couple off-by-one) errors,
-%but it must be that $g_{t-1}^t = 1$.
-The $d_j\in\R_+$ are given by a CNN over the token embeddings.
-
-The network used to compute the gates is called the Parsing Network.
-When computing $p(x_t\mid\ldots)$, we cannot use the posterior score $d_t$,
-so an estimate is used based on the previous $k$ words, where $k$ is the 
-kernel width of the convolution.
-However, afterwards \citet{shen2018prpn} use the posterior score $d_i \mid x_{i-K},\ldots, x_i$
-for all $d_i$ when $i < t$.
-\end{comment}
+[Work through Figure~\ref{fig:soft}]
 
 \section{Training}
-With the soft model that uses the expectation of $s_i(l_t)$ training is very simple.
-We simply maximize the likelihood of the data directly since the model 
-is fully neural.
+With the soft model that uses $\E{s_i(l_t)}$ training is very simple.
+We simply maximize the likelihood of the data directly since the model has no latent variables.
 
 \section{Extracting a Parse Tree}
-Use greedy approximation,
-go over on board?
+Given a trained model, we can extract a binary constituency tree using the scores from the parsing network.
+Perform the following procedure recursively:
+\begin{algorithmic}
+\Function{Split}{$x = \set{x_0,\ldots,x_T}$}
+\If{$x = \emptyset$}
+\State \Return $\emptyset$
+\ElsIf{$|x| = 1$}
+\State \Return $x$
+\Else
+\State Choose index $i\in\set{0,\ldots,T}$ 
+\State \Return $(\Call{Split}{\bx_{<i}}, (x_i, \Call{Split}{\bx_{>i}}))$
+\EndIf
+\EndFunction
+\end{algorithmic}
+The definition then reduces to defining the index choice step.
+Under an order-statistic model we could sample $i\sim\Cat(\textrm{softmax}(\bd))$
+or use a greedy approximation by taking the argmax of that distribution at every step.
 
 \section{Results}
 \subsection{Language Modeling}
 
 The language modeling results are decent, but it's unclear whether the
 gating mechanism offers any improvement.
-They perform ablation studies, but they do not seem to be replicable
-so it is possible the perplexity improvements come 
+They report the results of an ablation study, but they do not seem to be replicable.
+On github someone reported that removing the Parsing Network had very little effect on perplexity.
+It is possible the perplexity improvements come 
 mainly from embedding-tying and partly from self-attention.
+
+SOTA is around 55 and \citet{shen2018prpn} are around 62.
 
 \begin{table}[h!]                                                                 
 \centering                                                                       
@@ -353,7 +303,7 @@ mainly from embedding-tying and partly from self-attention.
 \subsection{Parsing}
 The parsing results, on the other hand, are quite good.
 On WSJ10, the model beats the right-branching baseline but not the CCM model.
-On the full WSJ, the model gets an averaged sentence F1 of 38.8,
+On the full WSJ, the model gets an averaged sentence F1 of 38.1,
 which beats random, balanced, and right branching baselines
 (the highest F1 reported is 21.3).
 Why should we care about this?
@@ -384,13 +334,61 @@ allow the self-attention to function as normal.
   \label{tb_parser}                                 
 \end{table}                                         
 
-\subsection{Ranking Models}
+\subsection{Alternative Probabilistic Interpretation}
+Rather than defining latent variable $l_t$ which is a categorical over indices,
+what if we instead define $l_t$ as a function of pairwise comparisons between $d_t$
+and all preceeding $d_i$ (for a given timestep $t$)?
+We would have
+$$l_t = \max \set{i : \alpha_i = 1, 0\leq i<t},
+\alpha_i \sim \Bern\left(\frac{d_i}{d_t+d_i}\right).$$
+This yields
+$p(\alpha_i=1)=\frac{d_i}{d_t+d_i}, \forall i\in\set{1,t-1}$.
+Similarly to the stick-breaking procedure, $p(\alpha_i=0)$ is already defined as the remaining mass.
+We then have
+\begin{equation*}
+p(l_t=k) =\left\{\begin{array}{l l}
+p(\alpha_{t-1}), & k=t-1\\
+\prod_{j=1}^{t-1}1-p(\alpha_j), & k=0\\
+p(\alpha_k)\prod_{j=k+1}^{t-1}1-p(\alpha_j), & \textrm{otherwise}
+\end{array}\right.
+\end{equation*}
+Again, we would have $l_t\sim\Cat$ parameterized as above.
+However, we could use hard attention tricks to maximize the marginal likelihood of this model exactly
+and the generative model is actually well-defined.
+This is known as a Bradley-Terry pairwise order statistic model.
+See Table~\ref{fig:geom} for a worked example of some of this process.
+
+Once we learn a pairwise model, we can use the parameterization of the scores $d_i$
+to provide insight into the probabilistic model over rankings.
+
+\begin{figure}
+\centering
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+& 0 & 1 & 2 & 3 & 4\\
+\hline
+raw attn $\tilde{s}$ & 0.4 & 0.1 & 0.3 & 0.2 & \\
+\hline
+scores $d$         & 0.7 & 0.6 & 0.3 & 0.4 & 0.5\\
+\hline
+$p(\alpha_i=1)$    & - & 6/11 & 3/8 & 4/9 & -\\
+\hline
+%$p(l_4)$ & (1-4/9)*(1-3/8)*(1-6/11) & (1-4/9)*(1-0.37)*0.55=0.19 & (1-0.45)*0.3/(0.3+0.5)= 0.21 & 0.4/(0.4+0.5)=0.45 &\\
+$p(l_4=k)$ & 0.16 & 0.19 & (1-0.45)*3/8= 0.21 & 4/9=0.45 & -\\
+\hline
+\end{tabular}
+\caption{An example computation of the attention gates.
+with a pairwise ranking model and $t=4$.
+It gives very similar probabilities to the `stick-breaking' approach but is tractable.}
+\label{fig:geom}
+\end{figure}
+
 Before discussing the \citet{shen2018prpn} model, we first introduce
-some notation and two possible ranking models, where both assign each item a latent score.
+some notation and two possible ranking models, where both assign each item a score.
 Let $\pi(i)$ denote the rank given to item $i$, and $\pi^{-1}(j)$ denote the 
 item at rank $j$.
 \begin{enumerate}
-\item Plackett-Luce / Thurstone:
+\item Plackett-Luce:
 There is a hidden score $\theta_i$ assigned to every item $i$.
 The $j$th ranking item is chosen from a categorical distribution 
 parameterized by the output of a softmax over the remaining items' scores.
@@ -417,13 +415,6 @@ model of ranking for training a language model,
 but then switch to the Plackett-Luce model at test time for outputting parse trees.
 This would allow us to learn a scoring model which can then be shared between the 
 pairwise and global ranking models.
-In the pairwise model, we could model
-$$l_t = \max \set{i : \alpha_t^i = 1, 0\leq i<t},
-\alpha_t^i \sim \Bern\left(\frac{z_t}{z_t+z_i}\right).$$
-
-However, \citet{shen2018prpn} decide to instead
-model as a RV the index $l_t$ (at every timestep) instead of the pairwise comparisons.
-We will get into to the details of their choices in section~\ref{subsec:gates}.
 
 The paper is inspired by the following hypothesis:
 given a binary tree, a token at index $t$ only requires information up to index $l_t$ that satisfies
