@@ -114,8 +114,9 @@ In addition to modeling the tokens,
 They decompose the joint distribution 
 \begin{equation}
 p(\bx, \bl)
-= \prod_t p(x_{t+1},l_t\mid\bx_{\le t},\bl_{<t})
-= \prod_t p(x_{t+1}\mid l_t,\bx_{\le t},\bl_{<t})p(l_t\mid\bx_{\le t}).
+%= \prod_t p(x_{t+1},l_t\mid\bx_{\le t},\bl_{<t})
+= \prod_t \underbrace{p(x_{t+1}\mid l_t,\bx_{\le t},\bl_{<t})}_{\textrm{Self-attentive LM}}
+\underbrace{p(l_t\mid\bx_{\le t})}_{\textrm{Attention limit}}.
 \end{equation}
 
 \subsection{$p(x_{t+1}\mid l_t,\bx_{\le t},\bl_{<t})$}
@@ -134,7 +135,7 @@ The recurrent input to the current timestep is a convex combination of
 all previous outputs of the current layer.
 Let $\bm{m}_{<t}$ be the concatenated output of all previous timesteps,
 then the recurrent input would be
-$$c = \sum_{i=0}^{t-1} s_i(l_t) m_i$$
+\begin{equation}c = \sum_{i=0}^{t-1} s_i(l_t) m_i\end{equation}
 and the output of the layer at the current timestep would be
 $m_t = LSTM(c, x_t)$ where $s_i$ is the attention coefficient
 for that index at timestep $t$ and $x_t$ is the input.
@@ -145,7 +146,7 @@ Let $\tilde{\bm{s}_t}\in\Delta^{t-2}$, the $t-2$ simplex, be the output of a sof
 the dot-product of memories $\bm{m}_{<t}$ and query $k_t$
 which is a linear function of the input $x_t$.
 We then define
-$$s_i(l_t) = \frac{g_i(l_t)\tilde{s}_i}{\sum_jg_j(l_t)\tilde{s}_j},$$
+\begin{equation}s_i(l_t) = \frac{g_i(l_t)\tilde{s}_i}{\sum_jg_j(l_t)\tilde{s}_j},\end{equation}
 where $g_i(l_t) = \mathbf{1}(l_t \le i)$.
 We have a set of these \textbf{per timestep}.
 Note that although we define $p(l_t)$ in the following section,
@@ -199,19 +200,20 @@ Let $\alpha_i = \frac{d_t-d_i+1}{2}$ and $t=4$.}
 
 \subsection{$p(l_t\mid\bx_{\le t})$}
 We define
-\begin{equation*}
+\begin{equation}
 p(l_t=k\mid\bx_{\le t}) =\left\{\begin{array}{l l}
 1-\alpha_{t-1}, & k=t-1\\
 \prod_{j=1}^{t-1}\alpha_j, & k=0\\
 (1-\alpha_k)\prod_{j=k+1}^{t-1}\alpha_j, & \textrm{otherwise}
 \end{array}\right.
-\end{equation*}
+\end{equation}
 Where the $\alpha_k$ are drawn from an unspecified Beta distribution.
 Thus $l_t\sim\Cat(\theta)$ where the parameters $\theta$ are determined
 through a stick-breaking process. 
-This ends up looking more like a generalized geometric distribution,
-probability of success or failure at each time step is flexible and there is a 
-maximum number of trials, which hints at an order-statistic interpretation which 
+This ends up looking more like a generalized geometric distribution
+where probability of success at each time step is flexible and there is a 
+maximum number of trials.
+This hints at an order-statistic interpretation which 
 we will touch upon if there is time.
 
 Note that this cannot be called a Dirichlet Process, as a $DP(\alpha, H_0)$ is defined by
@@ -224,15 +226,20 @@ Rather than proceed further in defining the generative model,
 \citet{shen2018prpn} instead pivot and instead of using $s_i(l_t)$
 they use its expectation (taken wrt $l_t$).
 We have
-$$
+\begin{equation}
 \Es{l_t}{g_i(l_t)} = \prod_{j=i+1}^{t-1}\alpha_j,
-$$
+\end{equation}
 and we then use
-$$\Es{l_t}{s_i(l_t)} = \frac{\Es{l_t}{g_i(l_t)}\tilde{s}_i}{\sum_j\Es{l_t}{g_j(l_t)}\tilde{s}_j}$$
+\begin{equation}
+\Es{l_t}{s_i(l_t)} = \frac{\Es{l_t}{g_i(l_t)}\tilde{s}_i}{\sum_j\Es{l_t}{g_j(l_t)}\tilde{s}_j}
+\end{equation}
 as the attention coefficients instead of $s_i(l_t)$.
 They then parameterize the $\alpha_k$ of timestep $t$ deterministically as follows:
-$$\alpha_k = \frac{\textrm{hardtanh}(2(d_t-d_k)/\tau+1)+1}{2},$$
+\begin{equation}
+\alpha_k = \frac{\textrm{hardtanh}(2(d_t-d_k)/\tau+1)+1}{2},
+\end{equation}
 where $\tau$ is some scaling parameter.
+Any function whose range is $[0,1]$ should be fine for a stick-breaking definition.
 The scores $d_k\in\mathbb{R}^+$ are obtained from a CNN over the tokens $\bx_{k-L:k}$,
 where $L$ is the width of the convolution kernel (this is set to 5).
 The scores $d_k$ are output by the Parsing Network.
@@ -356,7 +363,7 @@ Again, we would have $l_t\sim\Cat$ parameterized as above.
 However, we could use hard attention tricks to maximize the marginal likelihood of this model exactly
 and the generative model is actually well-defined.
 This is known as a Bradley-Terry pairwise order statistic model.
-See Table~\ref{fig:geom} for a worked example of some of this process.
+See Figure~\ref{fig:geom} for a worked example of some of this process.
 
 Once we learn a pairwise model, we can use the parameterization of the scores $d_i$
 to provide insight into the probabilistic model over rankings.
@@ -379,12 +386,11 @@ $p(l_4=k)$ & 0.16 & 0.19 & (1-0.45)*3/8= 0.21 & 4/9=0.45 & -\\
 \end{tabular}
 \caption{An example computation of the attention gates.
 with a pairwise ranking model and $t=4$.
-It gives very similar probabilities to the `stick-breaking' approach but is tractable.}
+It gives very similar probabilities when compared to the `stick-breaking' approach but is tractable.}
 \label{fig:geom}
 \end{figure}
 
-Before discussing the \citet{shen2018prpn} model, we first introduce
-some notation and two possible ranking models, where both assign each item a score.
+\section{other stuff}
 Let $\pi(i)$ denote the rank given to item $i$, and $\pi^{-1}(j)$ denote the 
 item at rank $j$.
 \begin{enumerate}
